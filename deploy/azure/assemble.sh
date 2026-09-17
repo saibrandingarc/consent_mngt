@@ -39,6 +39,11 @@ fi
 
 mkdir -p "${OUT}/dist"
 printf '%s\n' "require('../host.js');" > "${OUT}/dist/main.js"
+cat > "${OUT}/.deployment" <<'EOF'
+[config]
+SCM_DO_BUILD_DURING_DEPLOYMENT=false
+EOF
+rm -f "${OUT}/oryx-manifest.toml" "${OUT}/node_modules.tar.gz" "${OUT}/api/oryx-manifest.toml"
 
 python3 - <<PY
 from pathlib import Path

@@ -24,7 +24,6 @@ function start(label, command, args, cwd, extraEnv) {
   });
   child.on('exit', (code, signal) => {
     console.error(`[azure-host] ${label} exited code=${code} signal=${signal}`);
-    process.exit(code || 1);
   });
   return child;
 }
@@ -35,39 +34,23 @@ if (!webRel) {
   process.exit(1);
 }
 const webServer = path.join(ROOT, webRel);
-const webCwd = path.dirname(webServer);
+const webCwd = path.join(ROOT, 'web');
 
 const siteHost = process.env.WEBSITE_HOSTNAME || 'localhost';
 const publicOrigin = `https://${siteHost}`;
-
-start('web', process.execPath, [webServer], webCwd, {
-  PORT: String(WEB_PORT),
-  HOSTNAME: '0.0.0.0',
-  INTERNAL_API_URL: `http://127.0.0.1:${API_PORT}/api/v1`,
-  NEXT_PUBLIC_API_URL: `${publicOrigin}/api/v1`,
-  APP_BASE_URL: process.env.APP_BASE_URL || publicOrigin,
-  WEB_URL: process.env.WEB_URL || publicOrigin,
-});
-
-start('api', process.execPath, ['dist/main.js'], path.join(ROOT, 'api'), {
-  PORT: String(API_PORT),
-  WEB_URL: process.env.WEB_URL || publicOrigin,
-  ADMIN_URL: process.env.ADMIN_URL || 'http://localhost:3001',
-});
 
 function isApiPath(url) {
   return url.startsWith('/api/v1') || url.startsWith('/docs');
 }
 
 function proxy(req, res, port) {
-  const headers = { ...req.headers };
   const p = http.request(
     {
       hostname: '127.0.0.1',
       port,
       path: req.url,
       method: req.method,
-      headers,
+      headers: req.headers,
     },
     (up) => {
       res.writeHead(up.statusCode || 502, up.headers);
@@ -75,14 +58,19 @@ function proxy(req, res, port) {
     },
   );
   p.on('error', (err) => {
-    res.writeHead(502, { 'content-type': 'text/plain' });
-    res.end(`Bad gateway (${port}): ${err.message}`);
+    res.writeHead(503, { 'content-type': 'text/plain' });
+    res.end(`Service starting (${port}): ${err.message}`);
   });
   req.pipe(p);
 }
 
 const server = http.createServer((req, res) => {
   const url = req.url || '/';
+  if (url === '/__host' || url === '/__host/') {
+    res.writeHead(200, { 'content-type': 'application/json' });
+    res.end(JSON.stringify({ ok: true, web: WEB_PORT, api: API_PORT }));
+    return;
+  }
   proxy(req, res, isApiPath(url) ? API_PORT : WEB_PORT);
 });
 
@@ -111,4 +99,18 @@ server.on('upgrade', (req, socket, head) => {
 
 server.listen(PUBLIC_PORT, '0.0.0.0', () => {
   console.log(`[azure-host] public :${PUBLIC_PORT} -> web :${WEB_PORT}, api :${API_PORT}`);
+  start('web', process.execPath, [webServer], webCwd, {
+    PORT: String(WEB_PORT),
+    HOSTNAME: '0.0.0.0',
+    NODE_PATH: path.join(webCwd, 'node_modules'),
+    INTERNAL_API_URL: `http://127.0.0.1:${API_PORT}/api/v1`,
+    NEXT_PUBLIC_API_URL: `${publicOrigin}/api/v1`,
+    APP_BASE_URL: process.env.APP_BASE_URL || publicOrigin,
+    WEB_URL: process.env.WEB_URL || publicOrigin,
+  });
+  start('api', process.execPath, ['dist/main.js'], path.join(ROOT, 'api'), {
+    PORT: String(API_PORT),
+    WEB_URL: process.env.WEB_URL || publicOrigin,
+    ADMIN_URL: process.env.ADMIN_URL || 'http://localhost:3001',
+  });
 });
