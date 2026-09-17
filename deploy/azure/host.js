@@ -17,10 +17,11 @@ function readRel(file) {
 }
 
 function start(label, command, args, cwd, extraEnv) {
+  console.log(`[azure-host] spawn ${label} cwd=${cwd} cmd=${command} ${args.join(' ')}`);
   const child = spawn(command, args, {
     cwd,
     stdio: 'inherit',
-    env: { ...process.env, ...extraEnv },
+    env: { ...process.env, NODE_PATH: '', ...extraEnv },
   });
   child.on('exit', (code, signal) => {
     console.error(`[azure-host] ${label} exited code=${code} signal=${signal}`);
@@ -34,7 +35,6 @@ if (!webRel) {
   process.exit(1);
 }
 const webServer = path.join(ROOT, webRel);
-const webCwd = path.join(ROOT, 'web');
 
 const siteHost = process.env.WEBSITE_HOSTNAME || 'localhost';
 const publicOrigin = `https://${siteHost}`;
@@ -99,10 +99,13 @@ server.on('upgrade', (req, socket, head) => {
 
 server.listen(PUBLIC_PORT, '0.0.0.0', () => {
   console.log(`[azure-host] public :${PUBLIC_PORT} -> web :${WEB_PORT}, api :${API_PORT}`);
-  start('web', process.execPath, [webServer], webCwd, {
+  const webNodeModules = path.join(path.dirname(webServer), 'node_modules');
+  const styledJsx = path.join(webNodeModules, 'styled-jsx', 'package.json');
+  console.log(`[azure-host] web server=${webServer} exists=${fs.existsSync(webServer)} styled-jsx=${fs.existsSync(styledJsx)}`);
+  start('web', process.execPath, [webServer], path.dirname(webServer), {
     PORT: String(WEB_PORT),
     HOSTNAME: '0.0.0.0',
-    NODE_PATH: [path.join(webCwd, 'node_modules'), path.join(path.dirname(webServer), 'node_modules')].join(path.delimiter),
+    NODE_PATH: webNodeModules,
     INTERNAL_API_URL: `http://127.0.0.1:${API_PORT}/api/v1`,
     NEXT_PUBLIC_API_URL: `${publicOrigin}/api/v1`,
     APP_BASE_URL: process.env.APP_BASE_URL || publicOrigin,

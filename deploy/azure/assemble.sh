@@ -30,34 +30,36 @@ if [[ -z "${SERVER_JS}" ]]; then
 fi
 
 WEB_APP_DIR="$(dirname "${SERVER_JS}")"
-mkdir -p "${WEB_APP_DIR}/.next/static"
+mkdir -p "${WEB_APP_DIR}/.next/static" "${WEB_APP_DIR}/node_modules" "${OUT}/api/node_modules"
 cp -a "${ROOT}/apps/web/.next/static/." "${WEB_APP_DIR}/.next/static/"
 if [[ -d "${ROOT}/apps/web/public" ]]; then
   mkdir -p "${WEB_APP_DIR}/public"
   cp -a "${ROOT}/apps/web/public/." "${WEB_APP_DIR}/public/"
 fi
 
-copy_pkg() {
-  local name="$1"
+# pnpm nests next/styled-jsx (and nest/tslib) as siblings under .pnpm/*/node_modules.
+copy_pnpm_siblings() {
+  local pkg_json_glob="$1"
   local dest="$2"
-  mkdir -p "${dest}"
-  local src
-  src="$(find "${ROOT}/node_modules/.pnpm" -path "*/node_modules/${name}/package.json" | head -1 || true)"
-  if [[ -n "${src}" ]]; then
-    rm -rf "${dest}/${name}"
-    cp -a "$(dirname "${src}")" "${dest}/${name}"
-    echo "copied ${name} -> ${dest}/${name}"
+  local pkg
+  pkg="$(find "${ROOT}/node_modules/.pnpm" -path "${pkg_json_glob}" | head -1 || true)"
+  if [[ -z "${pkg}" ]]; then
+    echo "missing pnpm package ${pkg_json_glob}" >&2
+    exit 1
   fi
+  local siblings
+  siblings="$(dirname "$(dirname "${pkg}")")"
+  mkdir -p "${dest}"
+  cp -a "${siblings}/." "${dest}/"
+  echo "copied siblings of ${pkg} -> ${dest}"
 }
 
-copy_pkg tslib "${OUT}/api/node_modules"
-copy_pkg styled-jsx "${OUT}/web/node_modules"
-if [[ -d "${OUT}/web/node_modules" ]]; then
-  rm -rf "${WEB_APP_DIR}/node_modules"
-  REL="$(python3 -c "import os; print(os.path.relpath('${OUT}/web/node_modules', '${WEB_APP_DIR}'))")"
-  ln -sfn "${REL}" "${WEB_APP_DIR}/node_modules"
-  echo "linked ${WEB_APP_DIR}/node_modules -> ${REL}"
-fi
+copy_pnpm_siblings '*/node_modules/next/package.json' "${WEB_APP_DIR}/node_modules"
+copy_pnpm_siblings '*/node_modules/@nestjs/core/package.json' "${OUT}/api/node_modules"
+
+test -f "${WEB_APP_DIR}/node_modules/styled-jsx/package.json"
+test -f "${WEB_APP_DIR}/node_modules/next/package.json"
+test -f "${OUT}/api/node_modules/tslib/package.json"
 
 mkdir -p "${OUT}/dist"
 printf '%s\n' "require('../host.js');" > "${OUT}/dist/main.js"
