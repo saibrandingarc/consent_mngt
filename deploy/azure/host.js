@@ -3,11 +3,13 @@
 const fs = require('fs');
 const http = require('http');
 const path = require('path');
+const { parse } = require('url');
 const { createRequire } = require('module');
 const { spawn } = require('child_process');
 
 const PUBLIC_PORT = Number(process.env.PORT || 8080);
 const API_PORT = Number(process.env.API_INTERNAL_PORT || 4000);
+const ADMIN_PORT = Number(process.env.ADMIN_INTERNAL_PORT || 3001);
 const ROOT = __dirname;
 
 function start(label, command, args, cwd, extraEnv) {
@@ -19,22 +21,6 @@ function start(label, command, args, cwd, extraEnv) {
   });
   child.on('exit', (code, signal) => {
     console.error(`[azure-host] ${label} exited code=${code} signal=${signal}`);
-  });
-}
-
-function loadNext(appDir) {
-  const dir = path.join(ROOT, appDir);
-  const pkg = path.join(dir, 'package.json');
-  if (!fs.existsSync(pkg)) {
-    throw new Error(`missing ${pkg}`);
-  }
-  const req = createRequire(pkg);
-  const next = req('next');
-  return next({
-    dev: false,
-    dir,
-    hostname: '0.0.0.0',
-    port: PUBLIC_PORT,
   });
 }
 
@@ -57,11 +43,11 @@ function isAdminRequest(req) {
   return host.startsWith('admin.') || (adminHost && host === adminHost);
 }
 
-function proxyApi(req, res) {
+function proxyTo(port, req, res, label) {
   const p = http.request(
     {
       hostname: '127.0.0.1',
-      port: API_PORT,
+      port,
       path: req.url,
       method: req.method,
       headers: req.headers,
@@ -73,9 +59,21 @@ function proxyApi(req, res) {
   );
   p.on('error', (err) => {
     res.writeHead(503, { 'content-type': 'text/plain' });
-    res.end(`API starting: ${err.message}`);
+    res.end(`${label} starting: ${err.message}`);
   });
   req.pipe(p);
+}
+
+async function prepareWeb() {
+  const dir = path.join(ROOT, 'web');
+  const pkg = path.join(dir, 'package.json');
+  if (!fs.existsSync(pkg)) {
+    throw new Error(`missing ${pkg}`);
+  }
+  const next = createRequire(pkg)('next');
+  const app = next({ dev: false, dir, conf: { distDir: '.next' } });
+  await app.prepare();
+  return app.getRequestHandler();
 }
 
 async function main() {
@@ -91,33 +89,30 @@ async function main() {
     ADMIN_URL: adminOrigin,
   });
 
-  let webApp = null;
-  let adminApp = null;
-  let webError = null;
-  let adminError = null;
+  const adminDir = path.join(ROOT, 'admin');
+  const adminNext = path.join(adminDir, 'node_modules', 'next', 'dist', 'bin', 'next');
+  let adminSpawned = false;
+  if (fs.existsSync(adminNext)) {
+    start('admin', process.execPath, [adminNext, 'start', '-H', '127.0.0.1', '-p', String(ADMIN_PORT)], adminDir, {
+      PORT: String(ADMIN_PORT),
+      HOSTNAME: '127.0.0.1',
+      NODE_PATH: path.join(adminDir, 'node_modules'),
+      APP_BASE_URL: adminOrigin,
+      ADMIN_URL: adminOrigin,
+      WEB_URL: webOrigin,
+    });
+    adminSpawned = true;
+  }
 
+  let webHandle = null;
+  let webError = null;
   try {
-    webApp = loadNext('web');
-    await webApp.prepare();
+    webHandle = await prepareWeb();
     console.log('[azure-host] Next web prepared');
   } catch (err) {
     webError = err instanceof Error ? err.message : String(err);
     console.error('[azure-host] Next web failed:', err);
   }
-
-  try {
-    if (fs.existsSync(path.join(ROOT, 'admin', 'package.json'))) {
-      adminApp = loadNext('admin');
-      await adminApp.prepare();
-      console.log('[azure-host] Next admin prepared');
-    }
-  } catch (err) {
-    adminError = err instanceof Error ? err.message : String(err);
-    console.error('[azure-host] Next admin failed:', err);
-  }
-
-  const webHandle = webApp ? webApp.getRequestHandler() : null;
-  const adminHandle = adminApp ? adminApp.getRequestHandler() : null;
 
   const server = http.createServer((req, res) => {
     const url = req.url || '/';
@@ -127,9 +122,8 @@ async function main() {
         JSON.stringify({
           ok: true,
           webReady: Boolean(webHandle),
-          adminReady: Boolean(adminHandle),
+          adminSpawned,
           webError,
-          adminError,
           host: hostName(req),
         }),
       );
@@ -137,20 +131,17 @@ async function main() {
     }
 
     if (isApiRequest(req)) {
-      proxyApi(req, res);
+      proxyTo(API_PORT, req, res, 'API');
       return;
     }
 
-    const parsed = new URL(url, 'http://127.0.0.1');
-    if (isAdminRequest(req) && adminHandle) {
-      adminHandle(req, res, parsed).catch((err) => {
-        res.writeHead(500, { 'content-type': 'text/plain' });
-        res.end(String(err));
-      });
+    if (isAdminRequest(req) && adminSpawned) {
+      proxyTo(ADMIN_PORT, req, res, 'Admin');
       return;
     }
 
     if (webHandle) {
+      const parsed = parse(url, true);
       webHandle(req, res, parsed).catch((err) => {
         res.writeHead(500, { 'content-type': 'text/plain' });
         res.end(String(err));
@@ -163,7 +154,7 @@ async function main() {
   });
 
   server.listen(PUBLIC_PORT, '0.0.0.0', () => {
-    console.log(`[azure-host] listening on ${PUBLIC_PORT} (Next in-process, API :${API_PORT})`);
+    console.log(`[azure-host] listening on ${PUBLIC_PORT} (Next web in-process, API :${API_PORT})`);
   });
 }
 
