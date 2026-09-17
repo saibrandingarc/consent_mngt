@@ -63,6 +63,36 @@ copy_pnpm_siblings() {
 copy_pnpm_siblings '*/node_modules/next/package.json' "${WEB_APP_DIR}/node_modules"
 copy_pnpm_siblings '*/node_modules/@nestjs/core/package.json' "${OUT}/api/node_modules"
 
+copy_named_pkg() {
+  local name="$1"
+  local dest="$2"
+  if [[ -f "${dest}/${name}/package.json" ]]; then
+    echo "${name} already at ${dest}/${name}"
+    return 0
+  fi
+  local nested
+  nested="$(find "${dest}" -path "*/${name}/package.json" | head -1 || true)"
+  if [[ -n "${nested}" ]]; then
+    rm -rf "${dest}/${name}"
+    cp -a "$(dirname "${nested}")" "${dest}/${name}"
+    echo "hoisted ${name} from ${nested}"
+    return 0
+  fi
+  local src
+  src="$(find "${ROOT}/node_modules/.pnpm" -path "*/node_modules/${name}/package.json" | head -1 || true)"
+  if [[ -z "${src}" ]]; then
+    echo "missing package ${name}" >&2
+    ls -la "${dest}" | head -50 >&2
+    exit 1
+  fi
+  rm -rf "${dest}/${name}"
+  cp -a "$(dirname "${src}")" "${dest}/${name}"
+  echo "copied ${name} from ${src}"
+}
+
+copy_named_pkg styled-jsx "${WEB_APP_DIR}/node_modules"
+copy_named_pkg tslib "${OUT}/api/node_modules"
+
 test -f "${WEB_APP_DIR}/node_modules/styled-jsx/package.json"
 test -f "${WEB_APP_DIR}/node_modules/next/package.json"
 test -f "${OUT}/api/node_modules/tslib/package.json"
