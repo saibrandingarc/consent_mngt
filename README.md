@@ -1,6 +1,6 @@
 # Consent Management Platform
 
-Multi-tenant consent management platform — implementation based on [`../docs`](../docs).
+Multi-tenant consent management platform by **saibrandingarc**.
 
 ## Stack
 
@@ -38,11 +38,23 @@ pnpm dev:admin   # http://localhost:3001
 pnpm dev:web     # http://localhost:3000
 ```
 
+## Environments
+
+| Environment | How you run it | URL |
+|-------------|----------------|-----|
+| **local** | `pnpm dev` with `.env` | web `http://localhost:3000`, admin `http://localhost:3001`, API `http://localhost:4000` |
+| **dev** | `git push origin dev` | [Azure Dev](https://consentmngtdev-gtfgamd4c9b4bbcr.eastus2-01.azurewebsites.net/) |
+| **main** | merge / `git push origin main` | Azure production App Service `consentmngt` |
+
+Do not push day-to-day work to `main`. Use `dev` for Azure Dev. Production App Service settings: `deploy/azure/env.prod.example`. Dev App Service settings: `deploy/azure/env.dev.example`.
+
+GitHub: add secret `AZUREAPPSERVICE_PUBLISHPROFILE_PROD` and optional variables `AZURE_PROD_APP_NAME`, `AZURE_PROD_URL` when the production App Service exists.
+
 ## Deployment
 
-Deploy to Google Cloud: [`deploy/README.md`](./deploy/README.md) (triggers, secrets, URLs).
+Azure App Service (web + API on one hostname): GitHub Actions on `dev` / `main`.
 
-Full guide: [`docs/DEPLOY-GCP.md`](./docs/DEPLOY-GCP.md) · Auth0: [`docs/AUTH0-SETUP.md`](./docs/AUTH0-SETUP.md).
+Google Cloud (optional): [`deploy/README.md`](./deploy/README.md). Auth0: [`docs/AUTH0-SETUP.md`](./docs/AUTH0-SETUP.md).
 
 ## Sprint 1 — Foundation (Complete)
 

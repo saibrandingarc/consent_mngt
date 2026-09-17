@@ -2,6 +2,7 @@
   "name": "@cmp/sdk",
   "version": "0.1.0",
   "private": true,
+  "author": "saibrandingarc",
   "type": "module",
   "description": "CMP client-side SDK with consent banner",
   "main": "dist/sdk.js",

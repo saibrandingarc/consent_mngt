@@ -2,6 +2,11 @@
   "name": "cmp",
   "version": "0.1.0",
   "private": true,
+  "author": "saibrandingarc",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/saibrandingarc/consent_mngt.git"
+  },
   "description": "Consent Management Platform monorepo",
   "packageManager": "pnpm@9.6.0",
   "engines": {

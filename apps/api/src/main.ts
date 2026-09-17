@@ -19,7 +19,7 @@ async function bootstrap() {
 
   app.use(
     helmet({
-      // Public CMP assets (sdk.js) are embedded on customer sites like varnarc.com.
+      // Public CMP assets (sdk.js) are embedded on customer websites.
       crossOriginResourcePolicy: { policy: 'cross-origin' },
     }),
   );

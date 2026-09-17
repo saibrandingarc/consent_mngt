@@ -44,7 +44,7 @@ Open **Applications** → **consent_mngt** → **Settings**.
 | **Allowed Logout URLs** | `https://consent-management-web-414895350436.us-central1.run.app`, `https://consent-management-admin-414895350436.us-central1.run.app` |
 | **Allowed Web Origins** | `https://consent-management-web-414895350436.us-central1.run.app`, `https://consent-management-admin-414895350436.us-central1.run.app` |
 
-**Local development** — add these on the same lines (comma-separated):
+**Local** — add:
 
 ```text
 http://localhost:3000/auth/callback
@@ -52,6 +52,15 @@ http://localhost:3000
 http://localhost:3001/auth/callback
 http://localhost:3001
 ```
+
+**Azure Dev** — add:
+
+```text
+https://consentmngtdev-gtfgamd4c9b4bbcr.eastus2-01.azurewebsites.net/auth/callback
+https://consentmngtdev-gtfgamd4c9b4bbcr.eastus2-01.azurewebsites.net
+```
+
+**Azure production** — add the production hostname the same way (see `deploy/azure/env.prod.example`).
 
 Click **Save Changes**.
 
@@ -75,7 +84,7 @@ Save as `AUTH0_SECRET`.
 
 | Variable | Where | Example |
 |----------|--------|---------|
-| `AUTH0_DOMAIN` | Env var | `dev-varnarc.us.auth0.com` |
+| `AUTH0_DOMAIN` | Env var | Auth0 tenant domain |
 | `CM_AUTH0_CLIENT_ID` | **Secret Manager** | CMP-dedicated Auth0 app client ID |
 | `CM_AUTH0_CLIENT_SECRET` | **Secret Manager** | CMP-dedicated Auth0 app client secret |
 | `AUTH0_SECRET` | **Secret Manager** | `openssl rand -hex 32` |

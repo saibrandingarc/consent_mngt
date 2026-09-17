@@ -1,6 +1,7 @@
 {
   "name": "cmp-azure-site",
   "private": true,
+  "author": "saibrandingarc",
   "scripts": {
     "start": "node host.js"
   },
