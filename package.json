@@ -10,7 +10,7 @@
   "description": "Consent Management Platform monorepo",
   "packageManager": "pnpm@9.6.0",
   "engines": {
-    "node": ">=20"
+    "node": ">=22"
   },
   "scripts": {
     "dev": "turbo run dev",

@@ -6,6 +6,6 @@
     "start": "node host.js"
   },
   "engines": {
-    "node": ">=20"
+    "node": "22.x"
   }
 }

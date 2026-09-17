@@ -68,7 +68,7 @@ jobs:
       - name: Set up Node.js version
         uses: actions/setup-node@v4
         with:
-          node-version: '20.x'
+          node-version: '22.x'
 
       - name: Enable pnpm
         run: corepack enable && corepack prepare pnpm@9.6.0 --activate
