@@ -29,12 +29,42 @@ function start(label, command, args, cwd, extraEnv) {
   return child;
 }
 
-const nextRel = readRel('next-bin-rel.txt');
-if (!nextRel) {
-  console.error('[azure-host] missing next-bin-rel.txt');
-  process.exit(1);
+function findNextBin() {
+  const fromFile = readRel('next-bin-rel.txt');
+  const candidates = [
+    fromFile ? path.join(ROOT, fromFile) : null,
+    path.join(ROOT, 'web/node_modules/next/dist/bin/next'),
+    path.join(ROOT, 'web/node_modules/.bin/next'),
+  ].filter(Boolean);
+  for (const candidate of candidates) {
+    if (fs.existsSync(candidate)) return candidate;
+  }
+  const pnpm = path.join(ROOT, 'web/node_modules/.pnpm');
+  if (!fs.existsSync(pnpm)) return null;
+  const stack = [pnpm];
+  while (stack.length) {
+    const dir = stack.pop();
+    let entries = [];
+    try {
+      entries = fs.readdirSync(dir, { withFileTypes: true });
+    } catch {
+      continue;
+    }
+    for (const entry of entries) {
+      const full = path.join(dir, entry.name);
+      if (entry.isDirectory()) {
+        if (entry.name === 'next') {
+          const bin = path.join(full, 'dist/bin/next');
+          if (fs.existsSync(bin)) return bin;
+        }
+        stack.push(full);
+      }
+    }
+  }
+  return null;
 }
-const nextBin = path.join(ROOT, nextRel);
+
+const nextBin = findNextBin();
 const webCwd = path.join(ROOT, 'web');
 
 const siteHost = process.env.WEBSITE_HOSTNAME || 'localhost';
@@ -74,7 +104,8 @@ const server = http.createServer((req, res) => {
         ok: true,
         web: WEB_PORT,
         api: API_PORT,
-        nextBin: fs.existsSync(nextBin),
+        nextBin: Boolean(nextBin),
+        nextBinPath: nextBin,
       }),
     );
     return;
@@ -84,21 +115,25 @@ const server = http.createServer((req, res) => {
 
 server.listen(PUBLIC_PORT, '0.0.0.0', () => {
   console.log(`[azure-host] public :${PUBLIC_PORT} -> web :${WEB_PORT}, api :${API_PORT}`);
-  console.log(`[azure-host] nextBin=${nextBin} exists=${fs.existsSync(nextBin)}`);
-  start(
-    'web',
-    process.execPath,
-    [nextBin, 'start', '--hostname', '127.0.0.1', '--port', String(WEB_PORT)],
-    webCwd,
-    {
-      PORT: String(WEB_PORT),
-      HOSTNAME: '127.0.0.1',
-      INTERNAL_API_URL: `http://127.0.0.1:${API_PORT}/api/v1`,
-      NEXT_PUBLIC_API_URL: `${publicOrigin}/api/v1`,
-      APP_BASE_URL: process.env.APP_BASE_URL || publicOrigin,
-      WEB_URL: process.env.WEB_URL || publicOrigin,
-    },
-  );
+  console.log(`[azure-host] nextBin=${nextBin || 'MISSING'}`);
+  if (nextBin) {
+    start(
+      'web',
+      process.execPath,
+      [nextBin, 'start', '--hostname', '127.0.0.1', '--port', String(WEB_PORT)],
+      webCwd,
+      {
+        PORT: String(WEB_PORT),
+        HOSTNAME: '127.0.0.1',
+        INTERNAL_API_URL: `http://127.0.0.1:${API_PORT}/api/v1`,
+        NEXT_PUBLIC_API_URL: `${publicOrigin}/api/v1`,
+        APP_BASE_URL: process.env.APP_BASE_URL || publicOrigin,
+        WEB_URL: process.env.WEB_URL || publicOrigin,
+      },
+    );
+  } else {
+    console.error('[azure-host] next binary not found under web/node_modules');
+  }
   start('api', process.execPath, ['dist/main.js'], path.join(ROOT, 'api'), {
     PORT: String(API_PORT),
     NODE_PATH: path.join(ROOT, 'api', 'node_modules'),

@@ -28,39 +28,32 @@ if [[ -d "${ROOT}/apps/web/public" ]]; then
   cp -a "${ROOT}/apps/web/public/." "${OUT}/web/public/"
 fi
 
-copy_named_pkg() {
+# pnpm deploy uses symlinks; Azure zip drops them. Copy real package trees.
+copy_real_pkg() {
   local name="$1"
-  local dest="$2"
-  mkdir -p "${dest}"
-  if [[ -f "${dest}/${name}/package.json" ]]; then
-    return 0
-  fi
-  local src
-  src="$(find "${ROOT}/node_modules/.pnpm" -path "*/node_modules/${name}/package.json" | head -1 || true)"
-  if [[ -z "${src}" ]]; then
-    echo "missing package ${name}" >&2
+  local dest_parent="$2"
+  local pkg_json
+  pkg_json="$(find "${ROOT}/node_modules/.pnpm" -path "*/node_modules/${name}/package.json" | head -1 || true)"
+  if [[ -z "${pkg_json}" ]]; then
+    echo "missing ${name} in pnpm store" >&2
     exit 1
   fi
-  rm -rf "${dest}/${name}"
-  cp -a "$(dirname "${src}")" "${dest}/${name}"
+  mkdir -p "${dest_parent}"
+  rm -rf "${dest_parent}/${name}"
+  cp -aL "$(dirname "${pkg_json}")" "${dest_parent}/${name}"
+  echo "real copy ${name} -> ${dest_parent}/${name}"
 }
 
-copy_named_pkg tslib "${OUT}/api/node_modules"
+copy_real_pkg tslib "${OUT}/api/node_modules"
+copy_real_pkg next "${OUT}/web/node_modules"
+copy_real_pkg react "${OUT}/web/node_modules"
+copy_real_pkg react-dom "${OUT}/web/node_modules"
+copy_real_pkg styled-jsx "${OUT}/web/node_modules"
 
-test -f "${OUT}/web/node_modules/next/package.json" || test -f "${OUT}/web/node_modules/next/dist/bin/next"
+test -f "${OUT}/web/node_modules/next/dist/bin/next"
 test -f "${OUT}/api/node_modules/tslib/package.json"
-
-NEXT_BIN="$(find "${OUT}/web" -path '*/next/dist/bin/next' -not -path '*/.pnpm/*' | head -1 || true)"
-if [[ -z "${NEXT_BIN}" ]]; then
-  NEXT_BIN="$(find "${OUT}/web/node_modules" -path '*/next/dist/bin/next' | head -1)"
-fi
-test -n "${NEXT_BIN}"
-python3 - <<PY
-from pathlib import Path
-out = Path("${OUT}")
-(out / "next-bin-rel.txt").write_text(str(Path("${NEXT_BIN}").relative_to(out)))
-print("next bin:", Path("${NEXT_BIN}").relative_to(out))
-PY
+printf '%s\n' 'web/node_modules/next/dist/bin/next' > "${OUT}/next-bin-rel.txt"
+echo "next bin: web/node_modules/next/dist/bin/next"
 
 mkdir -p "${OUT}/dist"
 printf '%s\n' "require('../host.js');" > "${OUT}/dist/main.js"
