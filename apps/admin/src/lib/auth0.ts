@@ -27,7 +27,7 @@ export function getAuth0() {
         },
       },
       transactionCookie: {
-        name: '__cmp_admin_txn',
+        prefix: '__cmp_admin_txn_',
       },
       authorizationParameters: {
         scope: 'openid profile email offline_access',
