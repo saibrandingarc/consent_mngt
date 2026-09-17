@@ -48,7 +48,7 @@ export class ReportScheduleRepository {
   createRun(data: {
     organizationId: string;
     scheduleId?: string | null;
-    reportType: ReportType;
+    reportType: string;
     status: ReportRunStatus;
     resultSummary?: Prisma.InputJsonValue;
     deliveredTo?: string | null;

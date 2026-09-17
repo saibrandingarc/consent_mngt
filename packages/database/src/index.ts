@@ -43,4 +43,5 @@ export {
   hashApiKey,
 } from './repositories/api-key.repository';
 export { generateWebhookSecret } from './repositories/webhook.repository';
+export { fromJsonStringArray, parseJsonRecord, parseJsonValue } from './json-array';
 export { Enums };

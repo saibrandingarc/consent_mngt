@@ -95,11 +95,11 @@ export function resolveProviderDomain(entry: {
   return null;
 }
 
-export function isTrackerFindingType(findingType: ScanFindingType) {
+export function isTrackerFindingType(findingType: string) {
   return ['SCRIPT', 'IFRAME', 'PIXEL', 'NETWORK_REQUEST', 'SERVICE_WORKER'].includes(findingType);
 }
 
-export function isStorageFindingType(findingType: ScanFindingType) {
+export function isStorageFindingType(findingType: string) {
   return ['LOCAL_STORAGE', 'SESSION_STORAGE', 'INDEXED_DB'].includes(findingType);
 }
 
@@ -122,7 +122,7 @@ function isFirstPartyAppBundle(url: string, siteHostname: string) {
 
 export function shouldIncludeInInventory(
   finding: {
-    findingType: ScanFindingType;
+    findingType: string;
     name: string;
     sourceUrl: string | null;
     pageUrl?: string | null;
@@ -131,7 +131,7 @@ export function shouldIncludeInInventory(
   },
   siteHostname: string,
 ): boolean {
-  if (!INGESTIBLE_FINDING_TYPES.includes(finding.findingType)) return false;
+  if (!INGESTIBLE_FINDING_TYPES.includes(finding.findingType as ScanFindingType)) return false;
 
   if (finding.findingType === 'COOKIE' || isStorageFindingType(finding.findingType)) {
     return true;
@@ -164,7 +164,7 @@ export function shouldIncludeInInventory(
 
 export function groupScanFindingsForIngest(
   findings: Array<{
-    findingType: ScanFindingType;
+    findingType: string;
     consentState: string;
     name: string;
     cookieDomain: string | null;
@@ -179,10 +179,10 @@ export function groupScanFindingsForIngest(
   const grouped = new Map<string, GroupedScanFinding>();
 
   for (const finding of findings) {
-    if (!INGESTIBLE_FINDING_TYPES.includes(finding.findingType)) continue;
+    if (!INGESTIBLE_FINDING_TYPES.includes(finding.findingType as ScanFindingType)) continue;
 
     const inventoryKey = buildInventoryKey(
-      finding.findingType,
+      finding.findingType as ScanFindingType,
       finding.name,
       finding.cookieDomain ?? null,
       finding.sourceUrl ?? null,
@@ -210,7 +210,7 @@ export function groupScanFindingsForIngest(
       expiresAt: finding.expiresAt ?? existing?.expiresAt ?? null,
       isThirdParty: finding.isThirdParty ?? existing?.isThirdParty ?? null,
       foundBeforeConsent: Boolean(foundBeforeConsent),
-      findingType: finding.findingType,
+      findingType: finding.findingType as ScanFindingType,
       metadata: baseMetadata,
     });
   }
@@ -220,7 +220,7 @@ export function groupScanFindingsForIngest(
 
 export function countInventoryFromFindings(
   findings: Array<{
-    findingType: ScanFindingType;
+    findingType: string;
     consentState: string;
     name: string;
     cookieDomain: string | null;

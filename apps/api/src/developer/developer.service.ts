@@ -5,6 +5,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import type { Repositories } from '@cmp/database';
+import { parseJsonValue } from '@cmp/database';
 import type { CurrentUser } from '@cmp/types';
 import type { CreateDomainScanInput } from '@cmp/validation';
 import { REPOS } from '../database/database.module';
@@ -85,7 +86,7 @@ export class DeveloperService {
     if (idempotencyKey) {
       const cached = await this.repos.apiKeys.findIdempotency(ctx.organizationId, idempotencyKey);
       if (cached) {
-        return cached.responseBody as { ok: boolean; data: unknown };
+        return parseJsonValue(cached.responseBody) as { ok: boolean; data: unknown };
       }
     }
 

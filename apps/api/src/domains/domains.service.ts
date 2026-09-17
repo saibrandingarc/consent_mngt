@@ -257,7 +257,7 @@ export class DomainsService {
       id: row.id,
       domainId: row.domainId,
       organizationId: row.organizationId,
-      overallStatus: row.overallStatus,
+      overallStatus: row.overallStatus as ValidationHistoryItem['overallStatus'],
       checks: row.checks,
       createdAt: row.createdAt,
     }));

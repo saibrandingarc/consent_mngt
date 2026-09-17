@@ -6,6 +6,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import type { Repositories } from '@cmp/database';
+import { parseJsonRecord } from '@cmp/database';
 import type { CurrentUser } from '@cmp/types';
 import { computeGroupVisitorId } from '@cmp/utils';
 import { REPOS } from '../database/database.module';
@@ -424,7 +425,7 @@ export class EnterpriseService {
       ok: true,
       data: {
         sourceDomainId: record.domainId,
-        categories: record.categories as Record<string, boolean>,
+        categories: parseJsonRecord(record.categories) as unknown as Record<string, boolean>,
         configVersion: record.configVersion,
         policyVersionId: record.policyVersionId,
         savedAt: record.createdAt.toISOString(),

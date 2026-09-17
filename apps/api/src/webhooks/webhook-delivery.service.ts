@@ -2,6 +2,7 @@ import { createHmac } from 'node:crypto';
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import type { Repositories } from '@cmp/database';
 import type { WebhookDelivery } from '@cmp/database';
+import { parseJsonRecord } from '@cmp/database';
 import { REPOS } from '../database/database.module';
 
 const MAX_ATTEMPTS = 3;
@@ -51,7 +52,7 @@ export class WebhookDeliveryService {
       delivery.id,
       endpoint.url,
       endpoint.secret,
-      delivery.payload as Record<string, unknown>,
+      parseJsonRecord(delivery.payload),
     );
     return this.repos.webhooks.findDelivery(deliveryId);
   }

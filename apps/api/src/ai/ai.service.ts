@@ -5,6 +5,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import type { Repositories } from '@cmp/database';
+import { parseJsonRecord } from '@cmp/database';
 import type { CurrentUser } from '@cmp/types';
 import {
   classifyCookieHeuristic,
@@ -351,7 +352,7 @@ export class AiService {
       if (!suggestion.targetId) {
         throw new BadRequestException({ code: 'INVALID', message: 'Missing cookie target' });
       }
-      const payload = suggestion.suggestion as Record<string, unknown>;
+      const payload = parseJsonRecord(suggestion.suggestion);
       await this.repos.cookies.updateDomainCookie(suggestion.targetId, {
         provider: (payload.provider as string) ?? undefined,
         description: (payload.description as string) ?? undefined,

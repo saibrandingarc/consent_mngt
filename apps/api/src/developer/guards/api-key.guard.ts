@@ -8,7 +8,7 @@ import {
 import { Reflector } from '@nestjs/core';
 import { Inject } from '@nestjs/common';
 import type { Repositories } from '@cmp/database';
-import { hashApiKey } from '@cmp/database';
+import { fromJsonStringArray, hashApiKey } from '@cmp/database';
 import { REPOS } from '../../database/database.module';
 import { API_KEY_SCOPES_KEY } from '../decorators/api-key-scope.decorator';
 
@@ -48,7 +48,7 @@ export class ApiKeyGuard implements CanActivate {
       throw new UnauthorizedException({ code: 'API_KEY_EXPIRED', message: 'API key expired' });
     }
 
-    const scopes = record.scopes as string[];
+    const scopes = fromJsonStringArray(record.scopes);
     const requiredScopes = this.reflector.getAllAndOverride<string[]>(API_KEY_SCOPES_KEY, [
       context.getHandler(),
       context.getClass(),
@@ -66,7 +66,7 @@ export class ApiKeyGuard implements CanActivate {
     request.apiKeyContext = {
       apiKeyId: record.id,
       organizationId: record.organizationId,
-      environment: record.environment,
+      environment: record.environment === 'SANDBOX' ? 'SANDBOX' : 'PRODUCTION',
       scopes,
     };
 
