@@ -50,7 +50,13 @@ copy_pnpm_siblings() {
   local siblings
   siblings="$(dirname "$(dirname "${pkg}")")"
   mkdir -p "${dest}"
-  cp -a "${siblings}/." "${dest}/"
+  # Standalone/pnpm often leaves `next` as a symlink; cp cannot overwrite that with a directory.
+  while IFS= read -r -d '' item; do
+    local name
+    name="$(basename "${item}")"
+    rm -rf "${dest}/${name}"
+    cp -a "${item}" "${dest}/${name}"
+  done < <(find "${siblings}" -mindepth 1 -maxdepth 1 -print0)
   echo "copied siblings of ${pkg} -> ${dest}"
 }
 
