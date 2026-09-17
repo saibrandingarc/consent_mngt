@@ -279,7 +279,11 @@ export default function EnterprisePage() {
                 <tr key={r.id}>
                   <td>{r.name}</td>
                   <td><code>{r.slug}</code></td>
-                  <td>{r.permissions.join(', ')}</td>
+                  <td>
+                    {Array.isArray(r.permissions)
+                      ? r.permissions.join(', ')
+                      : String(r.permissions ?? '')}
+                  </td>
                 </tr>
               ))}
             </tbody>

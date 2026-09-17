@@ -4,30 +4,14 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
+  provider = "sqlserver"
   url      = env("CM_DATABASE_URL")
 }
 
-enum UserStatus {
-  ACTIVE
-  PENDING
-  LOCKED
-  DISABLED
-  DELETED
 
-  @@map("user_status")
-}
-
-enum OrganizationStatus {
-  ACTIVE
-  SUSPENDED
-  DELETED
-
-  @@map("organization_status")
-}
 
 model Organization {
-  id                 String             @id @default(uuid()) @db.Uuid
+  id                 String             @id @default(uuid()) @db.UniqueIdentifier
   name               String
   slug               String             @unique
   legalName          String?            @map("legal_name")
@@ -42,13 +26,13 @@ model Organization {
   dpoDetails         String?            @map("dpo_details")
   storeConsentIpAddress Boolean         @default(true) @map("store_consent_ip_address")
   geoTargetingDisabled  Boolean         @default(false) @map("geo_targeting_disabled")
-  whiteLabel            Json?           @map("white_label")
-  ssoConfig             Json?           @map("sso_config")
-  retentionPolicy       Json?           @map("retention_policy")
+  whiteLabel            String? @db.NVarChar(Max)           @map("white_label")
+  ssoConfig             String? @db.NVarChar(Max)           @map("sso_config")
+  retentionPolicy       String? @db.NVarChar(Max)           @map("retention_policy")
   dataResidencyRegion   String?         @map("data_residency_region") @db.VarChar(32)
   onboardingStep     Int                @default(0) @map("onboarding_step")
   onboardingComplete Boolean            @default(false) @map("onboarding_complete")
-  status             OrganizationStatus @default(ACTIVE)
+  status             String @default("ACTIVE")
   deletedAt          DateTime?          @map("deleted_at")
   createdAt          DateTime           @default(now()) @map("created_at")
   updatedAt          DateTime           @updatedAt @map("updated_at")
@@ -68,8 +52,8 @@ model Organization {
 }
 
 model User {
-  id                String     @id @default(uuid()) @db.Uuid
-  organizationId    String?    @map("organization_id") @db.Uuid
+  id                String     @id @default(uuid()) @db.UniqueIdentifier
+  organizationId    String?    @map("organization_id") @db.UniqueIdentifier
   auth0Sub          String?    @unique @map("auth0_sub")
   email             String     @unique
   passwordHash      String?    @map("password_hash")
@@ -77,7 +61,7 @@ model User {
   lastName          String     @map("last_name")
   emailVerified     Boolean    @default(false) @map("email_verified")
   emailVerifiedAt   DateTime?  @map("email_verified_at")
-  status            UserStatus @default(PENDING)
+  status            String @default("PENDING")
   failedLoginCount  Int        @default(0) @map("failed_login_count")
   lockedUntil       DateTime?  @map("locked_until")
   lastLoginAt       DateTime?  @map("last_login_at")
@@ -101,7 +85,7 @@ model User {
 }
 
 model Role {
-  id          String   @id @default(uuid()) @db.Uuid
+  id          String   @id @default(uuid()) @db.UniqueIdentifier
   slug        String   @unique
   name        String
   description String?
@@ -115,7 +99,7 @@ model Role {
 }
 
 model Permission {
-  id        String   @id @default(uuid()) @db.Uuid
+  id        String   @id @default(uuid()) @db.UniqueIdentifier
   slug      String   @unique
   name      String
   module    String
@@ -128,8 +112,8 @@ model Permission {
 }
 
 model UserRole {
-  userId    String   @map("user_id") @db.Uuid
-  roleId    String   @map("role_id") @db.Uuid
+  userId    String   @map("user_id") @db.UniqueIdentifier
+  roleId    String   @map("role_id") @db.UniqueIdentifier
   createdAt DateTime @default(now()) @map("created_at")
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -140,8 +124,8 @@ model UserRole {
 }
 
 model RolePermission {
-  roleId       String @map("role_id") @db.Uuid
-  permissionId String @map("permission_id") @db.Uuid
+  roleId       String @map("role_id") @db.UniqueIdentifier
+  permissionId String @map("permission_id") @db.UniqueIdentifier
 
   role       Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
   permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
@@ -151,8 +135,8 @@ model RolePermission {
 }
 
 model RefreshToken {
-  id        String    @id @default(uuid()) @db.Uuid
-  userId    String    @map("user_id") @db.Uuid
+  id        String    @id @default(uuid()) @db.UniqueIdentifier
+  userId    String    @map("user_id") @db.UniqueIdentifier
   tokenHash String    @unique @map("token_hash")
   expiresAt DateTime  @map("expires_at")
   revokedAt DateTime? @map("revoked_at")
@@ -168,8 +152,8 @@ model RefreshToken {
 }
 
 model LoginHistory {
-  id        String   @id @default(uuid()) @db.Uuid
-  userId    String   @map("user_id") @db.Uuid
+  id        String   @id @default(uuid()) @db.UniqueIdentifier
+  userId    String   @map("user_id") @db.UniqueIdentifier
   success   Boolean
   ipAddress String?  @map("ip_address")
   userAgent String?  @map("user_agent")
@@ -182,8 +166,8 @@ model LoginHistory {
 }
 
 model EmailVerificationToken {
-  id        String    @id @default(uuid()) @db.Uuid
-  userId    String    @map("user_id") @db.Uuid
+  id        String    @id @default(uuid()) @db.UniqueIdentifier
+  userId    String    @map("user_id") @db.UniqueIdentifier
   tokenHash String    @unique @map("token_hash")
   expiresAt DateTime  @map("expires_at")
   usedAt    DateTime? @map("used_at")
@@ -196,8 +180,8 @@ model EmailVerificationToken {
 }
 
 model PasswordResetToken {
-  id        String    @id @default(uuid()) @db.Uuid
-  userId    String    @map("user_id") @db.Uuid
+  id        String    @id @default(uuid()) @db.UniqueIdentifier
+  userId    String    @map("user_id") @db.UniqueIdentifier
   tokenHash String    @unique @map("token_hash")
   expiresAt DateTime  @map("expires_at")
   usedAt    DateTime? @map("used_at")
@@ -210,20 +194,20 @@ model PasswordResetToken {
 }
 
 model AuditLog {
-  id             String   @id @default(uuid()) @db.Uuid
-  userId         String?  @map("user_id") @db.Uuid
-  organizationId String?  @map("organization_id") @db.Uuid
+  id             String   @id @default(uuid()) @db.UniqueIdentifier
+  userId         String?  @map("user_id") @db.UniqueIdentifier
+  organizationId String?  @map("organization_id") @db.UniqueIdentifier
   action         String
   module         String
-  previousValue  Json?    @map("previous_value")
-  newValue       Json?    @map("new_value")
+  previousValue  String? @db.NVarChar(Max)    @map("previous_value")
+  newValue       String? @db.NVarChar(Max)    @map("new_value")
   ipAddress      String?  @map("ip_address")
   userAgent      String?  @map("user_agent")
   requestId      String?  @map("request_id")
   createdAt      DateTime @default(now()) @map("created_at")
 
-  user         User?         @relation(fields: [userId], references: [id], onDelete: SetNull)
-  organization Organization? @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+  user         User?         @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  organization Organization? @relation(fields: [organizationId], references: [id], onDelete: NoAction, onUpdate: NoAction)
 
   @@index([organizationId, createdAt])
   @@index([userId, createdAt])
@@ -231,74 +215,35 @@ model AuditLog {
   @@map("audit_logs")
 }
 
-enum DomainType {
-  ROOT
-  SUBDOMAIN
-  STAGING
-  ALIAS
 
-  @@map("domain_type")
-}
 
-enum DomainVerificationStatus {
-  PENDING
-  VERIFIED
-  FAILED
 
-  @@map("domain_verification_status")
-}
 
-enum DomainVerificationMethod {
-  DNS_TXT
-  HTML_FILE
-  META_TAG
-  CMP_SCRIPT
-  MANUAL
-
-  @@map("domain_verification_method")
-}
-
-enum ScanFrequency {
-  MANUAL
-  DAILY
-  WEEKLY
-  MONTHLY
-
-  @@map("scan_frequency_type")
-}
-
-enum ValidationCheckStatus {
-  PASS
-  WARNING
-  FAIL
-
-  @@map("validation_check_status")
-}
 
 model Domain {
-  id                 String                   @id @default(uuid()) @db.Uuid
-  organizationId     String                   @map("organization_id") @db.Uuid
+  id                 String                   @id @default(uuid()) @db.UniqueIdentifier
+  organizationId     String                   @map("organization_id") @db.UniqueIdentifier
   hostname           String                   @unique
   domainKey          String                   @unique @map("domain_key")
-  domainType         DomainType               @default(ROOT) @map("domain_type")
+  domainType         String               @default("ROOT") @map("domain_type")
   isProduction       Boolean                  @default(true) @map("is_production")
   enabled            Boolean                  @default(true)
   groupName          String?                  @map("group_name")
   scanLimit          Int                      @default(10) @map("scan_limit")
-  scanFrequency      ScanFrequency            @default(MANUAL) @map("scan_frequency")
+  scanFrequency      String            @default("MANUAL") @map("scan_frequency")
   nextScanAt         DateTime?                @map("next_scan_at")
   environment        String                   @default("production")
   region             String?
   autoBlocking       Boolean                  @default(true) @map("auto_blocking")
   debugMode          Boolean                  @default(false) @map("debug_mode")
   configVersion      Int                      @default(1) @map("config_version")
-  verificationStatus DomainVerificationStatus @default(PENDING) @map("verification_status")
-  verificationMethod DomainVerificationMethod? @map("verification_method")
+  verificationStatus String @default("PENDING") @map("verification_status")
+  verificationMethod String? @map("verification_method")
   verificationToken  String                   @map("verification_token")
   verifiedAt         DateTime?                @map("verified_at")
   lastVerifiedAt     DateTime?                @map("last_verified_at")
   sdkLastSeenAt      DateTime?                @map("sdk_last_seen_at")
-  sdkLastHeartbeat   Json?                    @map("sdk_last_heartbeat")
+  sdkLastHeartbeat   String? @db.NVarChar(Max)                    @map("sdk_last_heartbeat")
   deletedAt          DateTime?                @map("deleted_at")
   createdAt          DateTime                 @default(now()) @map("created_at")
   updatedAt          DateTime                 @updatedAt @map("updated_at")
@@ -325,11 +270,11 @@ model Domain {
 }
 
 model InstallationValidation {
-  id             String   @id @default(uuid()) @db.Uuid
-  domainId       String   @map("domain_id") @db.Uuid
-  organizationId String   @map("organization_id") @db.Uuid
-  overallStatus  ValidationCheckStatus @map("overall_status")
-  checks         Json
+  id             String   @id @default(uuid()) @db.UniqueIdentifier
+  domainId       String   @map("domain_id") @db.UniqueIdentifier
+  organizationId String   @map("organization_id") @db.UniqueIdentifier
+  overallStatus  String @map("overall_status")
+  checks         String @db.NVarChar(Max)
   createdAt      DateTime @default(now()) @map("created_at")
 
   domain Domain @relation(fields: [domainId], references: [id], onDelete: Cascade)
@@ -338,59 +283,26 @@ model InstallationValidation {
   @@map("installation_validations")
 }
 
-enum ConsentCategoryDefaultState {
-  ENABLED
-  DISABLED
 
-  @@map("consent_category_default_state")
-}
 
-enum PolicyVersionStatus {
-  DRAFT
-  SCHEDULED
-  PUBLISHED
-  ARCHIVED
 
-  @@map("policy_version_status")
-}
-
-enum ConsentEventType {
-  INITIAL_CONSENT
-  CONSENT_UPDATE
-  CONSENT_WITHDRAWAL
-  CONSENT_RENEWAL
-  POLICY_RENEWAL
-  CONSENT_EXPIRATION
-  ADMIN_INVALIDATION
-
-  @@map("consent_event_type")
-}
-
-enum ConsentStatus {
-  GRANTED
-  PARTIAL
-  REJECTED
-  WITHDRAWN
-
-  @@map("consent_status")
-}
 
 model ConsentCategory {
-  id              String                    @id @default(uuid()) @db.Uuid
-  domainId        String                    @map("domain_id") @db.Uuid
-  organizationId  String                    @map("organization_id") @db.Uuid
+  id              String                    @id @default(uuid()) @db.UniqueIdentifier
+  domainId        String                    @map("domain_id") @db.UniqueIdentifier
+  organizationId  String                    @map("organization_id") @db.UniqueIdentifier
   slug            String
   name            String
   description     String?
   legalBasis      String?                   @map("legal_basis")
-  defaultState    ConsentCategoryDefaultState @default(DISABLED) @map("default_state")
+  defaultState    String @default("DISABLED") @map("default_state")
   required        Boolean                   @default(false)
   sortOrder       Int                       @default(0) @map("sort_order")
   isSystem        Boolean                   @default(false) @map("is_system")
   enabled         Boolean                   @default(true)
-  externalSignals Json?                     @map("external_signals")
-  scriptMappings  Json?                     @map("script_mappings")
-  vendorPurposes  Json?                     @map("vendor_purposes")
+  externalSignals String? @db.NVarChar(Max)                     @map("external_signals")
+  scriptMappings  String? @db.NVarChar(Max)                     @map("script_mappings")
+  vendorPurposes  String? @db.NVarChar(Max)                     @map("vendor_purposes")
   createdAt       DateTime                  @default(now()) @map("created_at")
   updatedAt       DateTime                  @updatedAt @map("updated_at")
 
@@ -402,22 +314,22 @@ model ConsentCategory {
 }
 
 model PolicyVersion {
-  id                   String              @id @default(uuid()) @db.Uuid
-  domainId             String              @map("domain_id") @db.Uuid
-  organizationId       String              @map("organization_id") @db.Uuid
+  id                   String              @id @default(uuid()) @db.UniqueIdentifier
+  domainId             String              @map("domain_id") @db.UniqueIdentifier
+  organizationId       String              @map("organization_id") @db.UniqueIdentifier
   versionNumber        Int                 @map("version_number")
-  status               PolicyVersionStatus @default(DRAFT)
-  categoriesSnapshot   Json?               @map("categories_snapshot")
-  bannerContent        Json?               @map("banner_content")
-  legalText            Json?               @map("legal_text")
-  regulationConfig     Json?               @map("regulation_config")
-  defaultConsentStates Json?               @map("default_consent_states")
-  supportedLanguages   Json?               @map("supported_languages")
+  status               String @default("DRAFT")
+  categoriesSnapshot   String? @db.NVarChar(Max)               @map("categories_snapshot")
+  bannerContent        String? @db.NVarChar(Max)               @map("banner_content")
+  legalText            String? @db.NVarChar(Max)               @map("legal_text")
+  regulationConfig     String? @db.NVarChar(Max)               @map("regulation_config")
+  defaultConsentStates String? @db.NVarChar(Max)               @map("default_consent_states")
+  supportedLanguages   String? @db.NVarChar(Max)               @map("supported_languages")
   scheduledAt          DateTime?           @map("scheduled_at")
   publishedAt          DateTime?           @map("published_at")
   archivedAt           DateTime?           @map("archived_at")
   requiresRenewal      Boolean             @default(false) @map("requires_renewal")
-  renewalReason        Json?               @map("renewal_reason")
+  renewalReason        String? @db.NVarChar(Max)               @map("renewal_reason")
   changeSummary        String?             @map("change_summary")
   createdAt            DateTime            @default(now()) @map("created_at")
   updatedAt            DateTime            @updatedAt @map("updated_at")
@@ -431,45 +343,45 @@ model PolicyVersion {
 }
 
 model ConsentRenewal {
-  id              String   @id @default(uuid()) @db.Uuid
-  domainId        String   @map("domain_id") @db.Uuid
-  organizationId  String   @map("organization_id") @db.Uuid
-  policyVersionId String?  @map("policy_version_id") @db.Uuid
+  id              String   @id @default(uuid()) @db.UniqueIdentifier
+  domainId        String   @map("domain_id") @db.UniqueIdentifier
+  organizationId  String   @map("organization_id") @db.UniqueIdentifier
+  policyVersionId String?  @map("policy_version_id") @db.UniqueIdentifier
   reason          String
   scope           String   @default("all")
-  triggeredBy     String?  @map("triggered_by") @db.Uuid
-  metadata        Json?
+  triggeredBy     String?  @map("triggered_by") @db.UniqueIdentifier
+  metadata        String? @db.NVarChar(Max)
   createdAt       DateTime @default(now()) @map("created_at")
 
   domain        Domain         @relation(fields: [domainId], references: [id], onDelete: Cascade)
-  policyVersion PolicyVersion? @relation(fields: [policyVersionId], references: [id], onDelete: SetNull)
+  policyVersion PolicyVersion? @relation(fields: [policyVersionId], references: [id], onDelete: NoAction, onUpdate: NoAction)
 
   @@index([domainId, createdAt])
   @@map("consent_renewals")
 }
 
 model ConsentSubmission {
-  id                 String            @id @default(uuid()) @db.Uuid
-  domainId           String            @map("domain_id") @db.Uuid
-  organizationId     String            @map("organization_id") @db.Uuid
+  id                 String            @id @default(uuid()) @db.UniqueIdentifier
+  domainId           String            @map("domain_id") @db.UniqueIdentifier
+  organizationId     String            @map("organization_id") @db.UniqueIdentifier
   visitorId          String            @map("visitor_id")
-  authenticatedUserId String?           @map("authenticated_user_id") @db.Uuid
-  policyVersionId    String?           @map("policy_version_id") @db.Uuid
+  authenticatedUserId String?           @map("authenticated_user_id") @db.UniqueIdentifier
+  policyVersionId    String?           @map("policy_version_id") @db.UniqueIdentifier
   configVersion      Int               @map("config_version")
   bannerVersion      Int?              @map("banner_version")
-  categories         Json
-  vendors            Json?
+  categories         String @db.NVarChar(Max)
+  vendors            String? @db.NVarChar(Max)
   region             String?
   language           String?
   regulation         String?
   collectionMethod   String            @map("collection_method")
-  eventType          ConsentEventType  @default(INITIAL_CONSENT) @map("event_type")
-  consentStatus      ConsentStatus     @default(PARTIAL) @map("consent_status")
+  eventType          String  @default("INITIAL_CONSENT") @map("event_type")
+  consentStatus      String     @default("PARTIAL") @map("consent_status")
   checksum           String
   proofHash          String            @map("proof_hash")
   policySnapshotHash String?           @map("policy_snapshot_hash")
-  policySnapshot     Json?             @map("policy_snapshot")
-  previousRecordId   String?           @map("previous_record_id") @db.Uuid
+  policySnapshot     String? @db.NVarChar(Max)             @map("policy_snapshot")
+  previousRecordId   String?           @map("previous_record_id") @db.UniqueIdentifier
   userAgent          String?           @map("user_agent")
   ipAddressHash      String?           @map("ip_address_hash")
   expiresAt          DateTime?         @map("expires_at")
@@ -487,48 +399,19 @@ model ConsentSubmission {
   @@map("consent_submissions")
 }
 
-enum ScanStatus {
-  PENDING
-  RUNNING
-  COMPLETED
-  FAILED
-  CANCELLED
 
-  @@map("scan_status")
-}
 
-enum ScanFindingType {
-  COOKIE
-  LOCAL_STORAGE
-  SESSION_STORAGE
-  INDEXED_DB
-  SCRIPT
-  IFRAME
-  PIXEL
-  NETWORK_REQUEST
-  SERVICE_WORKER
-
-  @@map("scan_finding_type")
-}
-
-enum ScanConsentState {
-  BEFORE_CONSENT
-  AFTER_ACCEPT
-  AFTER_REJECT
-
-  @@map("scan_consent_state")
-}
 
 model DomainScan {
-  id              String     @id @default(uuid()) @db.Uuid
-  domainId        String     @map("domain_id") @db.Uuid
-  organizationId  String     @map("organization_id") @db.Uuid
-  status          ScanStatus @default(PENDING)
+  id              String     @id @default(uuid()) @db.UniqueIdentifier
+  domainId        String     @map("domain_id") @db.UniqueIdentifier
+  organizationId  String     @map("organization_id") @db.UniqueIdentifier
+  status          String @default("PENDING")
   startUrl        String     @map("start_url")
   maxPages        Int        @default(25) @map("max_pages")
   maxDepth        Int        @default(2) @map("max_depth")
-  includePaths    Json?      @map("include_paths")
-  excludePaths    Json?      @map("exclude_paths")
+  includePaths    String? @db.NVarChar(Max)      @map("include_paths")
+  excludePaths    String? @db.NVarChar(Max)      @map("exclude_paths")
   timeoutMs       Int        @default(30000) @map("timeout_ms")
   jsRendering     Boolean    @default(true) @map("js_rendering")
   deviceType      String     @default("desktop") @map("device_type")
@@ -540,7 +423,7 @@ model DomainScan {
   startedAt       DateTime?  @map("started_at")
   completedAt     DateTime?  @map("completed_at")
   durationMs      Int?       @map("duration_ms")
-  createdByUserId String?    @map("created_by_user_id") @db.Uuid
+  createdByUserId String?    @map("created_by_user_id") @db.UniqueIdentifier
   createdAt       DateTime   @default(now()) @map("created_at")
   updatedAt       DateTime   @updatedAt @map("updated_at")
 
@@ -554,8 +437,8 @@ model DomainScan {
 }
 
 model DomainScanPage {
-  id           String   @id @default(uuid()) @db.Uuid
-  scanId       String   @map("scan_id") @db.Uuid
+  id           String   @id @default(uuid()) @db.UniqueIdentifier
+  scanId       String   @map("scan_id") @db.UniqueIdentifier
   url          String
   canonicalUrl String?  @map("canonical_url")
   status       String   @default("ok")
@@ -571,11 +454,11 @@ model DomainScanPage {
 }
 
 model DomainScanFinding {
-  id            String           @id @default(uuid()) @db.Uuid
-  scanId        String           @map("scan_id") @db.Uuid
-  pageId        String?          @map("page_id") @db.Uuid
-  findingType   ScanFindingType  @map("finding_type")
-  consentState  ScanConsentState @default(BEFORE_CONSENT) @map("consent_state")
+  id            String           @id @default(uuid()) @db.UniqueIdentifier
+  scanId        String           @map("scan_id") @db.UniqueIdentifier
+  pageId        String?          @map("page_id") @db.UniqueIdentifier
+  findingType   String  @map("finding_type")
+  consentState  String @default("BEFORE_CONSENT") @map("consent_state")
   name          String
   valueSample   String?          @map("value_sample")
   cookieDomain  String?          @map("cookie_domain")
@@ -588,49 +471,21 @@ model DomainScanFinding {
   pageUrl       String?          @map("page_url")
   technology    String?
   sourceUrl     String?          @map("source_url")
-  metadata      Json?
+  metadata      String? @db.NVarChar(Max)
 
   scan DomainScan      @relation(fields: [scanId], references: [id], onDelete: Cascade)
-  page DomainScanPage? @relation(fields: [pageId], references: [id], onDelete: SetNull)
+  page DomainScanPage? @relation(fields: [pageId], references: [id], onDelete: NoAction, onUpdate: NoAction)
 
   @@index([scanId, findingType])
   @@map("domain_scan_findings")
 }
 
-enum CookieReviewStatus {
-  PENDING
-  AUTO_MATCHED
-  APPROVED
-  REJECTED
 
-  @@map("cookie_review_status")
-}
 
-enum CookieMatchMethod {
-  EXACT
-  PREFIX
-  SUFFIX
-  REGEX
-  PROVIDER_DOMAIN
-  SCRIPT_SOURCE
-  NETWORK_ENDPOINT
-  VENDOR_SIGNATURE
-  MANUAL
-
-  @@map("cookie_match_method")
-}
-
-enum CookieRiskLevel {
-  LOW
-  MEDIUM
-  HIGH
-
-  @@map("cookie_risk_level")
-}
 
 model CookieDefinition {
-  id               String          @id @default(uuid()) @db.Uuid
-  organizationId   String?         @map("organization_id") @db.Uuid
+  id               String          @id @default(uuid()) @db.UniqueIdentifier
+  organizationId   String?         @map("organization_id") @db.UniqueIdentifier
   cookieName       String          @map("cookie_name")
   provider         String
   providerDomain   String?         @map("provider_domain")
@@ -641,9 +496,9 @@ model CookieDefinition {
   dataCollected    String?         @map("data_collected")
   isThirdParty     Boolean         @default(false) @map("is_third_party")
   privacyPolicyUrl String?         @map("privacy_policy_url")
-  riskLevel        CookieRiskLevel @default(MEDIUM) @map("risk_level")
-  aliases          Json?
-  detectionPatterns Json           @map("detection_patterns")
+  riskLevel        String @default("MEDIUM") @map("risk_level")
+  aliases          String? @db.NVarChar(Max)
+  detectionPatterns String @db.NVarChar(Max)           @map("detection_patterns")
   isSystem         Boolean         @default(true) @map("is_system")
   createdAt        DateTime        @default(now()) @map("created_at")
   updatedAt        DateTime        @updatedAt @map("updated_at")
@@ -656,9 +511,9 @@ model CookieDefinition {
 }
 
 model DomainCookie {
-  id                 String              @id @default(uuid()) @db.Uuid
-  domainId           String              @map("domain_id") @db.Uuid
-  organizationId     String              @map("organization_id") @db.Uuid
+  id                 String              @id @default(uuid()) @db.UniqueIdentifier
+  domainId           String              @map("domain_id") @db.UniqueIdentifier
+  organizationId     String              @map("organization_id") @db.UniqueIdentifier
   cookieKey          String              @map("cookie_key")
   cookieName         String              @map("cookie_name")
   cookieDomain       String?             @map("cookie_domain")
@@ -671,20 +526,20 @@ model DomainCookie {
   dataCollected      String?             @map("data_collected")
   isThirdParty       Boolean?            @map("is_third_party")
   privacyPolicyUrl   String?             @map("privacy_policy_url")
-  riskLevel          CookieRiskLevel?    @map("risk_level")
-  cookieDefinitionId String?             @map("cookie_definition_id") @db.Uuid
-  matchMethod        CookieMatchMethod?  @map("match_method")
+  riskLevel          String?    @map("risk_level")
+  cookieDefinitionId String?             @map("cookie_definition_id") @db.UniqueIdentifier
+  matchMethod        String?  @map("match_method")
   matchConfidence    Int?                @map("match_confidence")
-  reviewStatus       CookieReviewStatus  @default(PENDING) @map("review_status")
+  reviewStatus       String  @default("PENDING") @map("review_status")
   firstSeenAt        DateTime            @map("first_seen_at")
   lastSeenAt         DateTime            @map("last_seen_at")
-  lastScanId         String?             @map("last_scan_id") @db.Uuid
+  lastScanId         String?             @map("last_scan_id") @db.UniqueIdentifier
   seenCount          Int                 @default(1) @map("seen_count")
   expiresAt          DateTime?           @map("expires_at")
   foundBeforeConsent Boolean             @default(false) @map("found_before_consent")
   sourceUrl          String?             @map("source_url")
-  metadata           Json?
-  reviewedByUserId   String?             @map("reviewed_by_user_id") @db.Uuid
+  metadata           String? @db.NVarChar(Max)
+  reviewedByUserId   String?             @map("reviewed_by_user_id") @db.UniqueIdentifier
   reviewedAt         DateTime?           @map("reviewed_at")
   createdAt          DateTime            @default(now()) @map("created_at")
   updatedAt          DateTime            @updatedAt @map("updated_at")
@@ -699,9 +554,9 @@ model DomainCookie {
 }
 
 model BlockingViolation {
-  id             String   @id @default(uuid()) @db.Uuid
-  domainId       String   @map("domain_id") @db.Uuid
-  organizationId String   @map("organization_id") @db.Uuid
+  id             String   @id @default(uuid()) @db.UniqueIdentifier
+  domainId       String   @map("domain_id") @db.UniqueIdentifier
+  organizationId String   @map("organization_id") @db.UniqueIdentifier
   url            String
   resourceType   String   @map("resource_type")
   category       String?
@@ -716,57 +571,35 @@ model BlockingViolation {
   @@map("blocking_violations")
 }
 
-enum NotificationSeverity {
-  INFO
-  WARNING
-  ERROR
-
-  @@map("notification_severity")
-}
 
 model Notification {
-  id             String               @id @default(uuid()) @db.Uuid
-  organizationId String               @map("organization_id") @db.Uuid
-  domainId       String?              @map("domain_id") @db.Uuid
+  id             String               @id @default(uuid()) @db.UniqueIdentifier
+  organizationId String               @map("organization_id") @db.UniqueIdentifier
+  domainId       String?              @map("domain_id") @db.UniqueIdentifier
   type           String
   title          String
   message        String
-  severity       NotificationSeverity @default(INFO)
+  severity       String @default("INFO")
   readAt         DateTime?            @map("read_at")
-  metadata       Json?
+  metadata       String? @db.NVarChar(Max)
   createdAt      DateTime             @default(now()) @map("created_at")
 
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  domain       Domain?      @relation(fields: [domainId], references: [id], onDelete: Cascade)
+  domain       Domain?      @relation(fields: [domainId], references: [id], onDelete: NoAction, onUpdate: NoAction)
 
   @@index([organizationId, createdAt])
   @@index([organizationId, readAt])
   @@map("notifications")
 }
 
-enum ReportScheduleFrequency {
-  DAILY
-  WEEKLY
-  MONTHLY
-  QUARTERLY
 
-  @@map("report_schedule_frequency")
-}
-
-enum ReportType {
-  COMPLIANCE
-  SCAN_SUMMARY
-  CONSENT_EXPORT
-
-  @@map("report_type")
-}
 
 model ReportSchedule {
-  id              String                  @id @default(uuid()) @db.Uuid
-  organizationId  String                  @map("organization_id") @db.Uuid
-  domainId        String?                 @map("domain_id") @db.Uuid
-  reportType      ReportType              @map("report_type")
-  frequency       ReportScheduleFrequency
+  id              String                  @id @default(uuid()) @db.UniqueIdentifier
+  organizationId  String                  @map("organization_id") @db.UniqueIdentifier
+  domainId        String?                 @map("domain_id") @db.UniqueIdentifier
+  reportType      String              @map("report_type")
+  frequency       String
   deliveryEmail   String?                 @map("delivery_email")
   deliveryWebhook String?                 @map("delivery_webhook")
   enabled         Boolean                 @default(true)
@@ -782,20 +615,14 @@ model ReportSchedule {
   @@map("report_schedules")
 }
 
-enum ReportRunStatus {
-  COMPLETED
-  FAILED
-
-  @@map("report_run_status")
-}
 
 model ReportRun {
-  id             String          @id @default(uuid()) @db.Uuid
-  organizationId String          @map("organization_id") @db.Uuid
-  scheduleId     String?         @map("schedule_id") @db.Uuid
-  reportType     ReportType      @map("report_type")
-  status         ReportRunStatus
-  resultSummary  Json?           @map("result_summary")
+  id             String          @id @default(uuid()) @db.UniqueIdentifier
+  organizationId String          @map("organization_id") @db.UniqueIdentifier
+  scheduleId     String?         @map("schedule_id") @db.UniqueIdentifier
+  reportType     String      @map("report_type")
+  status         String
+  resultSummary  String? @db.NVarChar(Max)           @map("result_summary")
   deliveredTo    String?         @map("delivered_to")
   createdAt      DateTime        @default(now()) @map("created_at")
 
@@ -805,25 +632,19 @@ model ReportRun {
   @@map("report_runs")
 }
 
-enum ApiKeyEnvironment {
-  PRODUCTION
-  SANDBOX
-
-  @@map("api_key_environment")
-}
 
 model ApiKey {
-  id              String            @id @default(uuid()) @db.Uuid
-  organizationId  String            @map("organization_id") @db.Uuid
+  id              String            @id @default(uuid()) @db.UniqueIdentifier
+  organizationId  String            @map("organization_id") @db.UniqueIdentifier
   name            String
   keyPrefix       String            @map("key_prefix")
   keyHash         String            @unique @map("key_hash")
-  scopes          Json
-  environment     ApiKeyEnvironment @default(PRODUCTION)
+  scopes          String @db.NVarChar(Max)
+  environment     String @default("PRODUCTION")
   lastUsedAt      DateTime?         @map("last_used_at")
   expiresAt       DateTime?         @map("expires_at")
   revokedAt       DateTime?         @map("revoked_at")
-  createdByUserId String?           @map("created_by_user_id") @db.Uuid
+  createdByUserId String?           @map("created_by_user_id") @db.UniqueIdentifier
   createdAt       DateTime          @default(now()) @map("created_at")
   updatedAt       DateTime          @updatedAt @map("updated_at")
 
@@ -833,21 +654,14 @@ model ApiKey {
   @@map("api_keys")
 }
 
-enum WebhookDeliveryStatus {
-  PENDING
-  DELIVERED
-  FAILED
-
-  @@map("webhook_delivery_status")
-}
 
 model WebhookEndpoint {
-  id             String   @id @default(uuid()) @db.Uuid
-  organizationId String   @map("organization_id") @db.Uuid
+  id             String   @id @default(uuid()) @db.UniqueIdentifier
+  organizationId String   @map("organization_id") @db.UniqueIdentifier
   url            String
   secret         String
   secretPrefix   String   @map("secret_prefix")
-  events         Json
+  events         String @db.NVarChar(Max)
   enabled        Boolean  @default(true)
   description    String?
   createdAt      DateTime @default(now()) @map("created_at")
@@ -861,12 +675,12 @@ model WebhookEndpoint {
 }
 
 model WebhookDelivery {
-  id                String                @id @default(uuid()) @db.Uuid
-  webhookEndpointId String                @map("webhook_endpoint_id") @db.Uuid
-  organizationId    String                @map("organization_id") @db.Uuid
+  id                String                @id @default(uuid()) @db.UniqueIdentifier
+  webhookEndpointId String                @map("webhook_endpoint_id") @db.UniqueIdentifier
+  organizationId    String                @map("organization_id") @db.UniqueIdentifier
   eventType         String                @map("event_type")
-  payload           Json
-  status            WebhookDeliveryStatus @default(PENDING)
+  payload           String @db.NVarChar(Max)
+  status            String @default("PENDING")
   attemptCount      Int                   @default(0) @map("attempt_count")
   lastAttemptAt     DateTime?             @map("last_attempt_at")
   nextRetryAt       DateTime?             @map("next_retry_at")
@@ -884,14 +698,14 @@ model WebhookDelivery {
 }
 
 model ApiIdempotencyKey {
-  id             String   @id @default(uuid()) @db.Uuid
-  organizationId String   @map("organization_id") @db.Uuid
-  apiKeyId       String?  @map("api_key_id") @db.Uuid
+  id             String   @id @default(uuid()) @db.UniqueIdentifier
+  organizationId String   @map("organization_id") @db.UniqueIdentifier
+  apiKeyId       String?  @map("api_key_id") @db.UniqueIdentifier
   idempotencyKey String   @map("idempotency_key")
   method         String
   path           String
   statusCode     Int      @map("status_code")
-  responseBody   Json     @map("response_body")
+  responseBody   String @db.NVarChar(Max)     @map("response_body")
   createdAt      DateTime @default(now()) @map("created_at")
   expiresAt      DateTime @map("expires_at")
 
@@ -901,14 +715,14 @@ model ApiIdempotencyKey {
 }
 
 model DomainGroup {
-  id                String   @id @default(uuid()) @db.Uuid
-  organizationId    String   @map("organization_id") @db.Uuid
+  id                String   @id @default(uuid()) @db.UniqueIdentifier
+  organizationId    String   @map("organization_id") @db.UniqueIdentifier
   name              String
   slug              String
   shareConsent      Boolean  @default(true) @map("share_consent")
   consentSyncSecret String   @map("consent_sync_secret")
-  parentDomainId    String?  @map("parent_domain_id") @db.Uuid
-  allowedHostnames  String[] @default([]) @map("allowed_hostnames")
+  parentDomainId    String?  @map("parent_domain_id") @db.UniqueIdentifier
+  allowedHostnames  String @db.NVarChar(Max)     @default("[]") @map("allowed_hostnames")
   createdAt         DateTime @default(now()) @map("created_at")
   updatedAt         DateTime @updatedAt @map("updated_at")
 
@@ -921,12 +735,12 @@ model DomainGroup {
 }
 
 model DomainGroupMember {
-  groupId  String @map("group_id") @db.Uuid
-  domainId String @map("domain_id") @db.Uuid
+  groupId  String @map("group_id") @db.UniqueIdentifier
+  domainId String @map("domain_id") @db.UniqueIdentifier
   role     String @default("member")
 
   group  DomainGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
-  domain Domain      @relation(fields: [domainId], references: [id], onDelete: Cascade)
+  domain Domain      @relation(fields: [domainId], references: [id], onDelete: NoAction, onUpdate: NoAction)
 
   @@id([groupId, domainId])
   @@index([domainId])
@@ -934,12 +748,12 @@ model DomainGroupMember {
 }
 
 model OrganizationCustomRole {
-  id             String   @id @default(uuid()) @db.Uuid
-  organizationId String   @map("organization_id") @db.Uuid
+  id             String   @id @default(uuid()) @db.UniqueIdentifier
+  organizationId String   @map("organization_id") @db.UniqueIdentifier
   slug           String
   name           String
   description    String?
-  permissions    String[]
+  permissions    String @db.NVarChar(Max)     @default("[]")
   createdAt      DateTime @default(now()) @map("created_at")
   updatedAt      DateTime @updatedAt @map("updated_at")
 
@@ -952,64 +766,47 @@ model OrganizationCustomRole {
 }
 
 model UserCustomRole {
-  userId      String   @map("user_id") @db.Uuid
-  customRoleId String @map("custom_role_id") @db.Uuid
+  userId      String   @map("user_id") @db.UniqueIdentifier
+  customRoleId String @map("custom_role_id") @db.UniqueIdentifier
   createdAt   DateTime @default(now()) @map("created_at")
 
   customRole OrganizationCustomRole @relation(fields: [customRoleId], references: [id], onDelete: Cascade)
-  user       User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user       User                   @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
 
   @@id([userId, customRoleId])
   @@map("user_custom_roles")
 }
 
 model UserDomainAccess {
-  userId      String   @map("user_id") @db.Uuid
-  domainId    String   @map("domain_id") @db.Uuid
-  permissions String[]
+  userId      String   @map("user_id") @db.UniqueIdentifier
+  domainId    String   @map("domain_id") @db.UniqueIdentifier
+  permissions String @db.NVarChar(Max)     @default("[]")
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
 
   domain Domain @relation(fields: [domainId], references: [id], onDelete: Cascade)
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
 
   @@id([userId, domainId])
   @@index([domainId])
   @@map("user_domain_access")
 }
 
-enum AiSuggestionType {
-  COOKIE_CLASSIFICATION
-  COOKIE_DESCRIPTION
-  COMPLIANCE_RECOMMENDATION
-  BANNER_TEXT
-  MISCLASSIFIED_NECESSARY
 
-  @@map("ai_suggestion_type")
-}
-
-enum AiSuggestionStatus {
-  PENDING
-  APPROVED
-  REJECTED
-  APPLIED
-
-  @@map("ai_suggestion_status")
-}
 
 model AiSuggestion {
-  id             String             @id @default(uuid()) @db.Uuid
-  organizationId String             @map("organization_id") @db.Uuid
-  domainId       String             @map("domain_id") @db.Uuid
-  suggestionType AiSuggestionType   @map("suggestion_type")
-  status         AiSuggestionStatus @default(PENDING)
+  id             String             @id @default(uuid()) @db.UniqueIdentifier
+  organizationId String             @map("organization_id") @db.UniqueIdentifier
+  domainId       String             @map("domain_id") @db.UniqueIdentifier
+  suggestionType String   @map("suggestion_type")
+  status         String @default("PENDING")
   targetType     String             @map("target_type")
-  targetId       String?            @map("target_id") @db.Uuid
+  targetId       String?            @map("target_id") @db.UniqueIdentifier
   confidence     Float?
-  suggestion     Json
-  evidence       Json?
+  suggestion     String @db.NVarChar(Max)
+  evidence       String? @db.NVarChar(Max)
   createdBy      String?            @map("created_by")
-  decidedBy      String?            @map("decided_by") @db.Uuid
+  decidedBy      String?            @map("decided_by") @db.UniqueIdentifier
   decidedAt      DateTime?          @map("decided_at")
   createdAt      DateTime           @default(now()) @map("created_at")
   updatedAt      DateTime           @updatedAt @map("updated_at")
@@ -1022,11 +819,11 @@ model AiSuggestion {
 }
 
 model RegressionTestRun {
-  id             String                @id @default(uuid()) @db.Uuid
-  organizationId String                @map("organization_id") @db.Uuid
-  domainId       String                @map("domain_id") @db.Uuid
-  overallStatus  ValidationCheckStatus @map("overall_status")
-  scenarios      Json
+  id             String                @id @default(uuid()) @db.UniqueIdentifier
+  organizationId String                @map("organization_id") @db.UniqueIdentifier
+  domainId       String                @map("domain_id") @db.UniqueIdentifier
+  overallStatus  String @map("overall_status")
+  scenarios      String @db.NVarChar(Max)
   createdAt      DateTime              @default(now()) @map("created_at")
 
   domain Domain @relation(fields: [domainId], references: [id], onDelete: Cascade)

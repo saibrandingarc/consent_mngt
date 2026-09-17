@@ -1,4 +1,6 @@
-import type { Prisma, PrismaClient, ScanConsentState, ScanFindingType, ScanStatus } from '@prisma/client';
+import type { Prisma, PrismaClient } from '@prisma/client';
+import type { ScanConsentState, ScanFindingType, ScanStatus } from '../enums';
+import { toOptionalJsonString } from '../json-array';
 
 export interface CreateScanInput {
   domainId: string;
@@ -146,8 +148,8 @@ export class ScanRepository {
         startUrl: input.startUrl,
         maxPages: input.maxPages,
         maxDepth: input.maxDepth,
-        includePaths: input.includePaths ?? undefined,
-        excludePaths: input.excludePaths ?? undefined,
+        includePaths: toOptionalJsonString(input.includePaths),
+        excludePaths: toOptionalJsonString(input.excludePaths),
         timeoutMs: input.timeoutMs,
         jsRendering: input.jsRendering,
         deviceType: input.deviceType,
@@ -225,7 +227,7 @@ export class ScanRepository {
         pageUrl: finding.pageUrl,
         technology: finding.technology,
         sourceUrl: finding.sourceUrl,
-        metadata: finding.metadata,
+        metadata: toOptionalJsonString(finding.metadata),
       })),
     });
   }

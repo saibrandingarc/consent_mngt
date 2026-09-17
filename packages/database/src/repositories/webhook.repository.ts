@@ -1,5 +1,6 @@
 import { randomBytes } from 'node:crypto';
 import type { Prisma, PrismaClient } from '@prisma/client';
+import { fromJsonStringArray, toJsonArray, toJsonString } from '../json-array';
 
 export function generateWebhookSecret() {
   const secret = `whsec_${randomBytes(24).toString('hex')}`;
@@ -31,7 +32,7 @@ export class WebhookRepository {
       },
     }).then((endpoints) =>
       endpoints.filter((endpoint) => {
-        const events = endpoint.events as string[];
+        const events = fromJsonStringArray(endpoint.events);
         return events.includes(eventType) || events.includes('*');
       }),
     );
@@ -51,7 +52,7 @@ export class WebhookRepository {
         url: data.url,
         secret: data.secret,
         secretPrefix: data.secretPrefix,
-        events: data.events,
+        events: toJsonArray(data.events),
         description: data.description ?? null,
       },
     });
@@ -68,7 +69,17 @@ export class WebhookRepository {
       secretPrefix: string;
     }>,
   ) {
-    return this.prisma.webhookEndpoint.update({ where: { id }, data });
+    return this.prisma.webhookEndpoint.update({
+      where: { id },
+      data: {
+        url: data.url,
+        enabled: data.enabled,
+        description: data.description,
+        secret: data.secret,
+        secretPrefix: data.secretPrefix,
+        events: data.events ? toJsonArray(data.events) : undefined,
+      },
+    });
   }
 
   deleteEndpoint(id: string) {
@@ -86,7 +97,7 @@ export class WebhookRepository {
         webhookEndpointId: data.webhookEndpointId,
         organizationId: data.organizationId,
         eventType: data.eventType,
-        payload: data.payload,
+        payload: toJsonString(data.payload),
         status: 'PENDING',
       },
     });

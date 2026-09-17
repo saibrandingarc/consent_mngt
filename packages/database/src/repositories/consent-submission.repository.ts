@@ -1,4 +1,5 @@
 import type { Prisma, PrismaClient } from '@prisma/client';
+import { toJsonString, toOptionalJsonString } from '../json-array';
 
 export interface ConsentRecordSearchFilters {
   organizationId: string;
@@ -57,8 +58,8 @@ export class ConsentSubmissionRepository {
         policyVersionId: data.policyVersionId ?? null,
         configVersion: data.configVersion,
         bannerVersion: data.bannerVersion ?? null,
-        categories: data.categories,
-        vendors: data.vendors ?? undefined,
+        categories: toJsonString(data.categories),
+        vendors: toOptionalJsonString(data.vendors),
         region: data.region ?? null,
         language: data.language ?? null,
         regulation: data.regulation ?? null,
@@ -68,7 +69,7 @@ export class ConsentSubmissionRepository {
         checksum: data.checksum,
         proofHash: data.proofHash,
         policySnapshotHash: data.policySnapshotHash ?? null,
-        policySnapshot: data.policySnapshot ?? undefined,
+        policySnapshot: toOptionalJsonString(data.policySnapshot),
         previousRecordId: data.previousRecordId ?? null,
         userAgent: data.userAgent ?? null,
         ipAddressHash: data.ipAddressHash ?? null,

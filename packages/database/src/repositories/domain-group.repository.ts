@@ -1,5 +1,6 @@
 import type { PrismaClient } from '@prisma/client';
 import { randomBytes } from 'node:crypto';
+import { toJsonArray } from '../json-array';
 
 function slugify(name: string): string {
   return name
@@ -79,7 +80,7 @@ export class DomainGroupRepository {
         shareConsent: data.shareConsent ?? true,
         consentSyncSecret,
         parentDomainId: data.parentDomainId ?? null,
-        allowedHostnames: data.allowedHostnames ?? [],
+        allowedHostnames: toJsonArray(data.allowedHostnames),
         members: data.domainIds?.length
           ? {
               create: data.domainIds.map((domainId) => ({
@@ -108,7 +109,14 @@ export class DomainGroupRepository {
   ) {
     return this.prisma.domainGroup.update({
       where: { id },
-      data,
+      data: {
+        name: data.name,
+        shareConsent: data.shareConsent,
+        parentDomainId: data.parentDomainId,
+        allowedHostnames: data.allowedHostnames
+          ? toJsonArray(data.allowedHostnames)
+          : undefined,
+      },
       include: {
         members: {
           include: { domain: { select: { id: true, hostname: true, domainKey: true } } },

@@ -1,4 +1,5 @@
 import type { PrismaClient } from '@prisma/client';
+import { toJsonArray } from '../json-array';
 
 function slugify(name: string): string {
   return name
@@ -46,7 +47,7 @@ export class EnterpriseRepository {
         slug,
         name: data.name,
         description: data.description,
-        permissions: data.permissions,
+        permissions: toJsonArray(data.permissions),
       },
     });
   }
@@ -55,7 +56,14 @@ export class EnterpriseRepository {
     id: string,
     data: { name?: string; description?: string; permissions?: string[] },
   ) {
-    return this.prisma.organizationCustomRole.update({ where: { id }, data });
+    return this.prisma.organizationCustomRole.update({
+      where: { id },
+      data: {
+        name: data.name,
+        description: data.description,
+        permissions: data.permissions ? toJsonArray(data.permissions) : undefined,
+      },
+    });
   }
 
   deleteCustomRole(id: string) {
@@ -86,8 +94,8 @@ export class EnterpriseRepository {
   upsertDomainAccess(userId: string, domainId: string, permissions: string[]) {
     return this.prisma.userDomainAccess.upsert({
       where: { userId_domainId: { userId, domainId } },
-      create: { userId, domainId, permissions },
-      update: { permissions },
+      create: { userId, domainId, permissions: toJsonArray(permissions) },
+      update: { permissions: toJsonArray(permissions) },
     });
   }
 

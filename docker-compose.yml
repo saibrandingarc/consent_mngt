@@ -1,14 +1,37 @@
 services:
-  postgres:
-    image: postgres:16
+  mssql:
+    image: mcr.microsoft.com/mssql/server:2022-latest
     environment:
-      POSTGRES_USER: cmp
-      POSTGRES_PASSWORD: cmp
-      POSTGRES_DB: cmp
+      ACCEPT_EULA: 'Y'
+      MSSQL_SA_PASSWORD: Cmp_Dev_Passw0rd
+      MSSQL_PID: Developer
     ports:
-      - '5432:5432'
+      - '1433:1433'
     volumes:
-      - cmp_postgres_data:/var/lib/postgresql/data
+      - cmp_mssql_data:/var/opt/mssql
+    healthcheck:
+      test:
+        [
+          'CMD-SHELL',
+          '/opt/mssql-tools18/bin/sqlcmd -C -S localhost -U sa -P Cmp_Dev_Passw0rd -Q "SELECT 1" || exit 1',
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 20s
+
+  mssql-init:
+    image: mcr.microsoft.com/mssql-tools:latest
+    depends_on:
+      mssql:
+        condition: service_healthy
+    environment:
+      MSSQL_SA_PASSWORD: Cmp_Dev_Passw0rd
+    entrypoint:
+      - /bin/bash
+      - -lc
+      - |
+        /opt/mssql-tools/bin/sqlcmd -S mssql -U sa -P "$$MSSQL_SA_PASSWORD" -C -Q "IF DB_ID('cmp') IS NULL CREATE DATABASE [cmp];"
 
 volumes:
-  cmp_postgres_data:
+  cmp_mssql_data:

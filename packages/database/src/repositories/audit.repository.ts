@@ -1,4 +1,5 @@
-import type { Prisma, PrismaClient } from '@prisma/client';
+import type { PrismaClient } from '@prisma/client';
+import { toOptionalJsonString } from '../json-array';
 
 export interface AuditLogInput {
   userId?: string | null;
@@ -22,8 +23,8 @@ export class AuditRepository {
         organizationId: input.organizationId ?? null,
         action: input.action,
         module: input.module,
-        previousValue: input.previousValue as Prisma.InputJsonValue,
-        newValue: input.newValue as Prisma.InputJsonValue,
+        previousValue: toOptionalJsonString(input.previousValue),
+        newValue: toOptionalJsonString(input.newValue),
         ipAddress: input.ipAddress ?? null,
         userAgent: input.userAgent ?? null,
         requestId: input.requestId ?? null,

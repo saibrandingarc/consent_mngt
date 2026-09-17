@@ -1,6 +1,7 @@
 import { createHash, randomBytes } from 'node:crypto';
 import type { Prisma, PrismaClient } from '@prisma/client';
 import { initializeDomainConsent } from './consent.repository';
+import { toOptionalJsonString } from '../json-array';
 
 function normalizeHostname(hostname: string): string {
   return hostname
@@ -154,7 +155,7 @@ export class DomainRepository {
       where: { domainKey, deletedAt: null },
       data: {
         sdkLastSeenAt: new Date(),
-        sdkLastHeartbeat: payload ?? undefined,
+        sdkLastHeartbeat: toOptionalJsonString(payload),
       },
     });
   }
@@ -166,7 +167,12 @@ export class DomainRepository {
     checks: unknown;
   }) {
     return this.prisma.installationValidation.create({
-      data: data as Prisma.InstallationValidationUncheckedCreateInput,
+      data: {
+        domainId: data.domainId,
+        organizationId: data.organizationId,
+        overallStatus: data.overallStatus,
+        checks: toOptionalJsonString(data.checks) ?? '{}',
+      },
     });
   }
 

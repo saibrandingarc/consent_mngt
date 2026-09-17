@@ -1,5 +1,6 @@
 import { createHash, randomBytes } from 'node:crypto';
 import type { Prisma, PrismaClient } from '@prisma/client';
+import { toJsonArray, toJsonString } from '../json-array';
 
 function hashSecret(value: string) {
   return createHash('sha256').update(value).digest('hex');
@@ -56,7 +57,7 @@ export class ApiKeyRepository {
         name: data.name,
         keyPrefix: data.keyPrefix,
         keyHash: data.keyHash,
-        scopes: data.scopes,
+        scopes: toJsonArray(data.scopes),
         environment: data.environment,
         expiresAt: data.expiresAt ?? null,
         createdByUserId: data.createdByUserId ?? null,
@@ -98,6 +99,11 @@ export class ApiKeyRepository {
     responseBody: Prisma.InputJsonValue;
     expiresAt: Date;
   }) {
-    return this.prisma.apiIdempotencyKey.create({ data });
+    return this.prisma.apiIdempotencyKey.create({
+      data: {
+        ...data,
+        responseBody: toJsonString(data.responseBody),
+      },
+    });
   }
 }

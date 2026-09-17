@@ -1,4 +1,5 @@
 import type { Prisma, PrismaClient } from '@prisma/client';
+import { toJsonString, toOptionalJsonString } from '../json-array';
 
 export class AiRepository {
   constructor(private readonly prisma: PrismaClient) {}
@@ -22,8 +23,8 @@ export class AiRepository {
         targetType: data.targetType,
         targetId: data.targetId ?? null,
         confidence: data.confidence ?? null,
-        suggestion: data.suggestion,
-        evidence: data.evidence ?? undefined,
+        suggestion: toJsonString(data.suggestion),
+        evidence: toOptionalJsonString(data.evidence),
         createdBy: data.createdBy ?? 'system',
         status: 'PENDING',
       },
@@ -71,7 +72,7 @@ export class AiRepository {
         organizationId: data.organizationId,
         domainId: data.domainId,
         overallStatus: data.overallStatus,
-        scenarios: data.scenarios,
+        scenarios: toJsonString(data.scenarios),
       },
     });
   }

@@ -1,10 +1,6 @@
-import type {
-  Prisma,
-  PrismaClient,
-  ReportScheduleFrequency,
-  ReportType,
-  ReportRunStatus,
-} from '@prisma/client';
+import type { Prisma, PrismaClient } from '@prisma/client';
+import type { ReportRunStatus, ReportScheduleFrequency, ReportType } from '../enums';
+import { toOptionalJsonString } from '../json-array';
 
 export class ReportScheduleRepository {
   constructor(private readonly prisma: PrismaClient) {}
@@ -63,7 +59,7 @@ export class ReportScheduleRepository {
         scheduleId: data.scheduleId ?? undefined,
         reportType: data.reportType,
         status: data.status,
-        resultSummary: data.resultSummary,
+        resultSummary: toOptionalJsonString(data.resultSummary),
         deliveredTo: data.deliveredTo ?? null,
       },
     });

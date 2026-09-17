@@ -1,5 +1,6 @@
 import type { Prisma, PrismaClient } from '@prisma/client';
 import { DEFAULT_BANNER_CONTENT, DEFAULT_CONSENT_CATEGORIES } from '../constants/default-consent';
+import { toOptionalJsonString, toJsonString } from '../json-array';
 
 function slugify(name: string): string {
   return name
@@ -82,9 +83,9 @@ export class ConsentCategoryRepository {
         enabled: data.enabled ?? true,
         sortOrder: count,
         isSystem: false,
-        externalSignals: data.externalSignals as Prisma.InputJsonValue,
-        scriptMappings: data.scriptMappings as Prisma.InputJsonValue,
-        vendorPurposes: data.vendorPurposes as Prisma.InputJsonValue,
+        externalSignals: toOptionalJsonString(data.externalSignals),
+        scriptMappings: toOptionalJsonString(data.scriptMappings),
+        vendorPurposes: toOptionalJsonString(data.vendorPurposes),
       },
     });
   }
@@ -140,7 +141,7 @@ export class ConsentCategoryRepository {
     await this.prisma.$transaction([
       this.prisma.consentCategory.update({
         where: { id: remapToCategoryId },
-        data: { scriptMappings: merged },
+        data: { scriptMappings: toOptionalJsonString(merged) },
       }),
       this.prisma.consentCategory.delete({ where: { id } }),
     ]);
@@ -191,8 +192,8 @@ export class PolicyVersionRepository {
         organizationId,
         versionNumber,
         status: 'DRAFT',
-        bannerContent: DEFAULT_BANNER_CONTENT,
-        supportedLanguages: ['en'],
+        bannerContent: toOptionalJsonString(DEFAULT_BANNER_CONTENT),
+        supportedLanguages: toJsonString(['en']),
       },
     });
   }
@@ -237,7 +238,7 @@ export class PolicyVersionRepository {
           status: 'PUBLISHED',
           publishedAt: new Date(),
           scheduledAt: null,
-          categoriesSnapshot: categoriesSnapshot as Prisma.InputJsonValue,
+          categoriesSnapshot: toOptionalJsonString(categoriesSnapshot),
         },
       });
 
@@ -256,7 +257,7 @@ export class PolicyVersionRepository {
       data: {
         status: 'SCHEDULED',
         scheduledAt,
-        categoriesSnapshot: categoriesSnapshot as Prisma.InputJsonValue,
+        categoriesSnapshot: toOptionalJsonString(categoriesSnapshot),
       },
     });
   }
@@ -271,7 +272,7 @@ export class PolicyVersionRepository {
   markRequiresRenewal(domainId: string, reason: unknown) {
     return this.prisma.policyVersion.updateMany({
       where: { domainId, status: 'PUBLISHED' },
-      data: { requiresRenewal: true, renewalReason: reason as Prisma.InputJsonValue },
+      data: { requiresRenewal: true, renewalReason: toOptionalJsonString(reason) },
     });
   }
 }
@@ -304,7 +305,7 @@ export class ConsentRenewalRepository {
         reason: data.reason,
         scope: data.scope ?? 'all',
         triggeredBy: data.triggeredBy,
-        metadata: data.metadata as Prisma.InputJsonValue,
+        metadata: toOptionalJsonString(data.metadata),
       },
     });
   }

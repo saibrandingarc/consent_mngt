@@ -23,6 +23,8 @@
     "db:migrate": "pnpm --filter @cmp/database migrate:dev",
     "db:migrate:deploy": "prisma migrate deploy --schema=packages/database/prisma/schema.prisma",
     "db:seed": "pnpm --filter @cmp/database seed",
+    "db:import-postgres": "pnpm --filter @cmp/database import:postgres",
+    "start": "pnpm --filter @cmp/api start",
     "db:setup": "pnpm db:migrate:deploy && pnpm db:seed",
     "clean": "turbo run clean && rm -rf node_modules"
   },

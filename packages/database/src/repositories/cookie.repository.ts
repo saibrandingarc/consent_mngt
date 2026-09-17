@@ -1,10 +1,6 @@
-import type {
-  CookieMatchMethod,
-  CookieReviewStatus,
-  CookieRiskLevel,
-  Prisma,
-  PrismaClient,
-} from '@prisma/client';
+import type { Prisma, PrismaClient } from '@prisma/client';
+import type { CookieMatchMethod, CookieReviewStatus, CookieRiskLevel } from '../enums';
+import { toJsonString, toOptionalJsonString } from '../json-array';
 
 export function buildCookieKey(cookieName: string, cookieDomain?: string | null) {
   return `${cookieName}|${cookieDomain ?? ''}`;
@@ -131,14 +127,20 @@ export class CookieRepository {
           isThirdParty: data.isThirdParty,
           privacyPolicyUrl: data.privacyPolicyUrl,
           riskLevel: data.riskLevel,
-          aliases: data.aliases,
-          detectionPatterns: data.detectionPatterns,
+          aliases: toOptionalJsonString(data.aliases),
+          detectionPatterns: toJsonString(data.detectionPatterns),
           isSystem: data.isSystem,
         },
       });
     }
 
-    return this.prisma.cookieDefinition.create({ data });
+    return this.prisma.cookieDefinition.create({
+      data: {
+        ...data,
+        aliases: toOptionalJsonString(data.aliases),
+        detectionPatterns: toJsonString(data.detectionPatterns),
+      },
+    });
   }
 
   async upsertDomainCookie(input: UpsertDomainCookieInput) {
@@ -160,7 +162,7 @@ export class CookieRepository {
           expiresAt: input.expiresAt ?? existing.expiresAt,
           foundBeforeConsent: existing.foundBeforeConsent || (input.foundBeforeConsent ?? false),
           sourceUrl: input.sourceUrl ?? existing.sourceUrl,
-          metadata: input.metadata ?? existing.metadata ?? undefined,
+          metadata: toOptionalJsonString(input.metadata ?? existing.metadata),
           ...(preserveManual
             ? {}
             : {
@@ -210,7 +212,7 @@ export class CookieRepository {
         expiresAt: input.expiresAt,
         foundBeforeConsent: input.foundBeforeConsent ?? false,
         sourceUrl: input.sourceUrl,
-        metadata: input.metadata,
+        metadata: toOptionalJsonString(input.metadata),
       },
     });
   }

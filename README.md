@@ -7,7 +7,7 @@ Multi-tenant consent management platform — implementation based on [`../docs`]
 | Layer | Choice |
 |-------|--------|
 | Apps | Next.js 15 (`web`, `admin`), NestJS (`api`) |
-| Data | PostgreSQL + Prisma |
+| Data | Microsoft SQL Server + Prisma |
 | Auth | Email/password, JWT access + refresh tokens |
 | Monorepo | pnpm + Turborepo |
 
@@ -26,7 +26,7 @@ packages/*        Shared libraries (@cmp/*)
 pnpm install
 cp .env.example .env
 
-# Start PostgreSQL
+# Start SQL Server (creates the `cmp` database)
 docker compose up -d
 
 pnpm db:generate

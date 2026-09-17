@@ -1,6 +1,7 @@
 import { PERMISSIONS, ROLE_DEFINITIONS } from '@cmp/auth';
 import { prisma } from './index';
 import { MASTER_COOKIE_DEFINITIONS } from './constants/master-cookies';
+import { toJsonString, toOptionalJsonString } from './json-array';
 
 const PERMISSION_META: Record<string, { name: string; module: string }> = {
   [PERMISSIONS.ORGANIZATION_MANAGE]: { name: 'Manage organization', module: 'organization' },
@@ -44,7 +45,6 @@ async function seedRoles() {
     await prisma.rolePermission.deleteMany({ where: { roleId: role.id } });
     await prisma.rolePermission.createMany({
       data: permissions.map((p) => ({ roleId: role.id, permissionId: p.id })),
-      skipDuplicates: true,
     });
   }
   console.log(`Seeded ${Object.keys(ROLE_DEFINITIONS).length} roles`);
@@ -73,8 +73,8 @@ async function seedMasterCookieDefinitions() {
       isThirdParty: cookie.isThirdParty,
       privacyPolicyUrl: cookie.privacyPolicyUrl,
       riskLevel: cookie.riskLevel,
-      aliases: cookie.aliases ?? undefined,
-      detectionPatterns: cookie.detectionPatterns as object,
+      aliases: toOptionalJsonString(cookie.aliases),
+      detectionPatterns: toJsonString(cookie.detectionPatterns),
       isSystem: true,
     };
 

@@ -1,4 +1,6 @@
-import type { NotificationSeverity, PrismaClient } from '@prisma/client';
+import type { PrismaClient } from '@prisma/client';
+import type { NotificationSeverity } from '../enums';
+import { toOptionalJsonString } from '../json-array';
 
 export class NotificationRepository {
   constructor(private readonly prisma: PrismaClient) {}
@@ -54,7 +56,7 @@ export class NotificationRepository {
         title: data.title,
         message: data.message,
         severity: data.severity ?? 'INFO',
-        metadata: data.metadata ?? undefined,
+        metadata: toOptionalJsonString(data.metadata),
       },
     });
   }
