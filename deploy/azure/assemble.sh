@@ -11,91 +11,56 @@ cp "${ROOT}/deploy/azure/host.js" "${OUT}/host.js"
 cp "${ROOT}/deploy/azure/package.json" "${OUT}/package.json"
 
 if [[ ! -d "${ROOT}/azure-api" ]]; then
-  echo "missing azure-api (run pnpm --filter @cmp/api deploy --prod ./azure-api first)" >&2
+  echo "missing azure-api" >&2
   exit 1
 fi
 cp -a "${ROOT}/azure-api/." "${OUT}/api/"
 
-STANDALONE="${ROOT}/apps/web/.next/standalone"
-if [[ ! -d "${STANDALONE}" ]]; then
-  echo "missing ${STANDALONE} (run pnpm --filter @cmp/web build first)" >&2
+if [[ ! -d "${ROOT}/azure-web" ]]; then
+  echo "missing azure-web (pnpm --filter @cmp/web deploy --prod ./azure-web)" >&2
   exit 1
 fi
-cp -a "${STANDALONE}/." "${OUT}/web/"
-
-SERVER_JS="$(find "${OUT}/web" -name server.js -not -path '*/node_modules/*' | head -1)"
-if [[ -z "${SERVER_JS}" ]]; then
-  echo "could not find Next standalone server.js" >&2
-  exit 1
-fi
-
-WEB_APP_DIR="$(dirname "${SERVER_JS}")"
-mkdir -p "${WEB_APP_DIR}/.next/static" "${WEB_APP_DIR}/node_modules" "${OUT}/api/node_modules"
-cp -a "${ROOT}/apps/web/.next/static/." "${WEB_APP_DIR}/.next/static/"
+cp -a "${ROOT}/azure-web/." "${OUT}/web/"
+rm -rf "${OUT}/web/.next"
+cp -a "${ROOT}/apps/web/.next" "${OUT}/web/.next"
 if [[ -d "${ROOT}/apps/web/public" ]]; then
-  mkdir -p "${WEB_APP_DIR}/public"
-  cp -a "${ROOT}/apps/web/public/." "${WEB_APP_DIR}/public/"
+  mkdir -p "${OUT}/web/public"
+  cp -a "${ROOT}/apps/web/public/." "${OUT}/web/public/"
 fi
-
-# pnpm nests next/styled-jsx (and nest/tslib) as siblings under .pnpm/*/node_modules.
-copy_pnpm_siblings() {
-  local pkg_json_glob="$1"
-  local dest="$2"
-  local pkg
-  pkg="$(find "${ROOT}/node_modules/.pnpm" -path "${pkg_json_glob}" | head -1 || true)"
-  if [[ -z "${pkg}" ]]; then
-    echo "missing pnpm package ${pkg_json_glob}" >&2
-    exit 1
-  fi
-  local siblings
-  siblings="$(dirname "$(dirname "${pkg}")")"
-  mkdir -p "${dest}"
-  # Standalone/pnpm often leaves `next` as a symlink; cp cannot overwrite that with a directory.
-  while IFS= read -r -d '' item; do
-    local name
-    name="$(basename "${item}")"
-    rm -rf "${dest}/${name}"
-    cp -a "${item}" "${dest}/${name}"
-  done < <(find "${siblings}" -mindepth 1 -maxdepth 1 -print0)
-  echo "copied siblings of ${pkg} -> ${dest}"
-}
-
-copy_pnpm_siblings '*/node_modules/next/package.json' "${WEB_APP_DIR}/node_modules"
-copy_pnpm_siblings '*/node_modules/@nestjs/core/package.json' "${OUT}/api/node_modules"
 
 copy_named_pkg() {
   local name="$1"
   local dest="$2"
+  mkdir -p "${dest}"
   if [[ -f "${dest}/${name}/package.json" ]]; then
-    echo "${name} already at ${dest}/${name}"
-    return 0
-  fi
-  local nested
-  nested="$(find "${dest}" -path "*/${name}/package.json" | head -1 || true)"
-  if [[ -n "${nested}" ]]; then
-    rm -rf "${dest}/${name}"
-    cp -a "$(dirname "${nested}")" "${dest}/${name}"
-    echo "hoisted ${name} from ${nested}"
     return 0
   fi
   local src
   src="$(find "${ROOT}/node_modules/.pnpm" -path "*/node_modules/${name}/package.json" | head -1 || true)"
   if [[ -z "${src}" ]]; then
     echo "missing package ${name}" >&2
-    ls -la "${dest}" | head -50 >&2
     exit 1
   fi
   rm -rf "${dest}/${name}"
   cp -a "$(dirname "${src}")" "${dest}/${name}"
-  echo "copied ${name} from ${src}"
 }
 
-copy_named_pkg styled-jsx "${WEB_APP_DIR}/node_modules"
 copy_named_pkg tslib "${OUT}/api/node_modules"
 
-test -f "${WEB_APP_DIR}/node_modules/styled-jsx/package.json"
-test -f "${WEB_APP_DIR}/node_modules/next/package.json"
+test -f "${OUT}/web/node_modules/next/package.json" || test -f "${OUT}/web/node_modules/next/dist/bin/next"
 test -f "${OUT}/api/node_modules/tslib/package.json"
+
+NEXT_BIN="$(find "${OUT}/web" -path '*/next/dist/bin/next' -not -path '*/.pnpm/*' | head -1 || true)"
+if [[ -z "${NEXT_BIN}" ]]; then
+  NEXT_BIN="$(find "${OUT}/web/node_modules" -path '*/next/dist/bin/next' | head -1)"
+fi
+test -n "${NEXT_BIN}"
+python3 - <<PY
+from pathlib import Path
+out = Path("${OUT}")
+(out / "next-bin-rel.txt").write_text(str(Path("${NEXT_BIN}").relative_to(out)))
+print("next bin:", Path("${NEXT_BIN}").relative_to(out))
+PY
 
 mkdir -p "${OUT}/dist"
 printf '%s\n' "require('../host.js');" > "${OUT}/dist/main.js"
@@ -104,11 +69,3 @@ cat > "${OUT}/.deployment" <<'EOF'
 SCM_DO_BUILD_DURING_DEPLOYMENT=false
 EOF
 rm -f "${OUT}/oryx-manifest.toml" "${OUT}/node_modules.tar.gz" "${OUT}/api/oryx-manifest.toml"
-
-python3 - <<PY
-from pathlib import Path
-out = Path("${OUT}")
-server = Path("${SERVER_JS}")
-(out / "web-server-rel.txt").write_text(str(server.relative_to(out)))
-print("web server:", server.relative_to(out))
-PY

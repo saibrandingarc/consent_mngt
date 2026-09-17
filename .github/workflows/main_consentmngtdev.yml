@@ -98,6 +98,7 @@ jobs:
           pnpm --filter @cmp/api... build
           pnpm --filter @cmp/web... build
           pnpm --filter @cmp/api deploy --prod ./azure-api
+          pnpm --filter @cmp/web deploy --prod ./azure-web
           SCHEMA="$(find ./azure-api/node_modules -path '*/@cmp/database/prisma/schema.prisma' -print -quit)"
           test -n "$SCHEMA"
           SRC_CLIENT="$(find node_modules/.pnpm -type d -path '*@prisma+client@*/node_modules/.prisma/client' | head -1)"
