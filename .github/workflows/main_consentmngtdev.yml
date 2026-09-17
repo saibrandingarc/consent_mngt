@@ -26,10 +26,18 @@ jobs:
       - name: Enable pnpm
         run: corepack enable && corepack prepare pnpm@9.6.0 --activate
 
-      - name: Install and build API
+      - name: Install, build API + web, assemble Azure site
         env:
           CM_DATABASE_URL: sqlserver://localhost:1433;database=cmp;user=sa;password=Placeholder_1;encrypt=true;trustServerCertificate=true
           PRISMA_GENERATE_SKIP_AUTOINSTALL: 'true'
+          NEXT_PUBLIC_API_URL: https://consentmngtdev-gtfgamd4c9b4bbcr.eastus2-01.azurewebsites.net/api/v1
+          APP_BASE_URL: https://consentmngtdev-gtfgamd4c9b4bbcr.eastus2-01.azurewebsites.net
+          WEB_URL: https://consentmngtdev-gtfgamd4c9b4bbcr.eastus2-01.azurewebsites.net
+          ADMIN_URL: http://localhost:3001
+          AUTH0_SECRET: build-time-placeholder-secret-32chars
+          AUTH0_DOMAIN: example.auth0.com
+          AUTH0_CLIENT_ID: build-placeholder-client-id
+          AUTH0_CLIENT_SECRET: build-placeholder-client-secret
         run: |
           pnpm install --frozen-lockfile
           pnpm --filter @cmp/database generate
@@ -41,10 +49,10 @@ jobs:
           pnpm --filter @cmp/sdk build
           pnpm --filter @cmp/database build
           pnpm --filter @cmp/api... build
+          pnpm --filter @cmp/web... build
           pnpm --filter @cmp/api deploy --prod ./azure-api
           SCHEMA="$(find ./azure-api/node_modules -path '*/@cmp/database/prisma/schema.prisma' -print -quit)"
           test -n "$SCHEMA"
-          # Do not let Prisma run `pnpm add` inside azure-api; copy the client already generated on the runner.
           SRC_CLIENT="$(find node_modules/.pnpm -type d -path '*@prisma+client@*/node_modules/.prisma/client' | head -1)"
           test -n "$SRC_CLIENT"
           mkdir -p azure-api/node_modules/.prisma
@@ -55,12 +63,13 @@ jobs:
             mkdir -p "$(dirname "$dest")"
             cp -R "$SRC_CLIENT" "$dest"
           done < <(find azure-api/node_modules -type d -path '*@prisma+client@*/node_modules/.prisma/client' 2>/dev/null || true)
+          bash deploy/azure/assemble.sh
 
       - name: Upload artifact for deployment job
         uses: actions/upload-artifact@v4
         with:
           name: node-app
-          path: azure-api
+          path: azure-site
 
   deploy:
     runs-on: ubuntu-latest

@@ -1,0 +1,10 @@
+{
+  "name": "cmp-azure-site",
+  "private": true,
+  "scripts": {
+    "start": "node host.js"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
