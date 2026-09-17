@@ -29,6 +29,7 @@ jobs:
       - name: Install and build API
         env:
           CM_DATABASE_URL: sqlserver://localhost:1433;database=cmp;user=sa;password=Placeholder_1;encrypt=true;trustServerCertificate=true
+          PRISMA_GENERATE_SKIP_AUTOINSTALL: 'true'
         run: |
           pnpm install --frozen-lockfile
           pnpm --filter @cmp/database generate
@@ -43,7 +44,17 @@ jobs:
           pnpm --filter @cmp/api deploy --prod ./azure-api
           SCHEMA="$(find ./azure-api/node_modules -path '*/@cmp/database/prisma/schema.prisma' -print -quit)"
           test -n "$SCHEMA"
-          pnpm exec prisma generate --schema="$SCHEMA"
+          # Do not let Prisma run `pnpm add` inside azure-api; copy the client already generated on the runner.
+          SRC_CLIENT="$(find node_modules/.pnpm -type d -path '*@prisma+client@*/node_modules/.prisma/client' | head -1)"
+          test -n "$SRC_CLIENT"
+          mkdir -p azure-api/node_modules/.prisma
+          rm -rf azure-api/node_modules/.prisma/client
+          cp -R "$SRC_CLIENT" azure-api/node_modules/.prisma/client
+          while IFS= read -r dest; do
+            rm -rf "$dest"
+            mkdir -p "$(dirname "$dest")"
+            cp -R "$SRC_CLIENT" "$dest"
+          done < <(find azure-api/node_modules -type d -path '*@prisma+client@*/node_modules/.prisma/client' 2>/dev/null || true)
 
       - name: Upload artifact for deployment job
         uses: actions/upload-artifact@v4

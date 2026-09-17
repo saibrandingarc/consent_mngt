@@ -109,15 +109,6 @@ export class AuthService {
       });
     }
 
-    const existing = await this.repos.users.findByAuth0Sub(claims.sub);
-    if (existing) {
-      if (existing.deletedAt || existing.status === 'DISABLED' || existing.status === 'DELETED') {
-        throw new ForbiddenException({ code: 'ACCOUNT_DISABLED', message: 'Account is disabled' });
-      }
-      const withRole = await this.ensureOrganizationRole(existing);
-      return this.toCurrentUser(withRole);
-    }
-
     const { user } = await this.upsertAuth0User(this.claimsToProfile(claims));
     return this.toCurrentUser(user);
   }
@@ -144,6 +135,10 @@ export class AuthService {
     };
   }
 
+  private isPlaceholderAuth0Email(email: string) {
+    return email.toLowerCase().endsWith('@users.auth0.local');
+  }
+
   private async upsertAuth0User(
     profile: {
       sub: string;
@@ -154,33 +149,29 @@ export class AuthService {
     },
     meta?: { ipAddress?: string; userAgent?: string },
   ): Promise<{ user: UserWithRoles; isNewUser: boolean }> {
-    let user = await this.repos.users.findByAuth0Sub(profile.sub);
+    const email = profile.email.toLowerCase();
+    const placeholderEmail = this.isPlaceholderAuth0Email(email);
+    const bySub = await this.repos.users.findByAuth0Sub(profile.sub);
+    const byEmail = placeholderEmail ? null : await this.repos.users.findByEmail(email);
+
+    let canonical = byEmail ?? bySub ?? null;
     let isNewUser = false;
 
-    if (!user) {
-      const existingByEmail = await this.repos.users.findByEmail(profile.email);
-      if (existingByEmail) {
-        if (existingByEmail.auth0Sub && existingByEmail.auth0Sub !== profile.sub) {
-          throw new ConflictException({
-            code: 'EMAIL_EXISTS',
-            message: 'Email is linked to a different Auth0 account',
-          });
-        }
-
-        await this.repos.users.update(existingByEmail.id, {
-          auth0Sub: profile.sub,
-          emailVerified: profile.emailVerified || existingByEmail.emailVerified,
-          emailVerifiedAt: existingByEmail.emailVerifiedAt ?? new Date(),
-          status: 'ACTIVE',
+    if (bySub && byEmail && bySub.id !== byEmail.id) {
+      await this.repos.users.update(bySub.id, { auth0Sub: null });
+      if (this.isPlaceholderAuth0Email(bySub.email)) {
+        await this.repos.users.update(bySub.id, {
+          status: 'DELETED',
+          deletedAt: new Date(),
         });
-        user = await this.repos.users.findById(existingByEmail.id);
       }
+      canonical = byEmail;
     }
 
-    if (!user) {
+    if (!canonical) {
       isNewUser = true;
       const created = await this.repos.users.create({
-        email: profile.email,
+        email,
         auth0Sub: profile.sub,
         firstName: profile.firstName,
         lastName: profile.lastName,
@@ -188,31 +179,47 @@ export class AuthService {
         emailVerifiedAt: profile.emailVerified ? new Date() : undefined,
         status: 'ACTIVE',
       });
-      user = await this.repos.users.findById(created.id);
+      canonical = await this.repos.users.findById(created.id);
+    } else {
+      await this.repos.users.update(canonical.id, {
+        auth0Sub: profile.sub,
+        ...(placeholderEmail
+          ? {}
+          : {
+              email,
+            }),
+        emailVerified: profile.emailVerified || canonical.emailVerified,
+        emailVerifiedAt: canonical.emailVerifiedAt ?? (profile.emailVerified ? new Date() : undefined),
+        status: canonical.status === 'PENDING' ? 'ACTIVE' : canonical.status,
+        ...(this.isPlaceholderAuth0Email(canonical.email) && !placeholderEmail
+          ? { firstName: profile.firstName, lastName: profile.lastName }
+          : {}),
+      });
+      canonical = await this.repos.users.findById(canonical.id);
     }
 
-    if (!user) {
+    if (!canonical) {
       throw new UnauthorizedException({
         code: 'UNAUTHORIZED',
         message: 'Unable to load user account',
       });
     }
 
-    if (user.status === 'DISABLED' || user.status === 'DELETED') {
+    if (canonical.status === 'DISABLED' || canonical.status === 'DELETED') {
       throw new ForbiddenException({ code: 'ACCOUNT_DISABLED', message: 'Account is disabled' });
     }
 
-    await this.repos.users.update(user.id, {
+    await this.repos.users.update(canonical.id, {
       failedLoginCount: 0,
       lockedUntil: null,
       lastLoginAt: new Date(),
-      ...(profile.emailVerified && !user.emailVerified
+      ...(profile.emailVerified && !canonical.emailVerified
         ? { emailVerified: true, emailVerifiedAt: new Date(), status: 'ACTIVE' }
         : {}),
     });
-    await this.repos.users.recordLoginHistory(user.id, true, meta?.ipAddress, meta?.userAgent);
+    await this.repos.users.recordLoginHistory(canonical.id, true, meta?.ipAddress, meta?.userAgent);
 
-    const refreshed = await this.repos.users.findById(user.id);
+    const refreshed = await this.repos.users.findById(canonical.id);
     if (!refreshed) {
       throw new UnauthorizedException({
         code: 'UNAUTHORIZED',

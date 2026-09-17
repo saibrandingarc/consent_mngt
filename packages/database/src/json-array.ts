@@ -103,6 +103,35 @@ function isPlainObject(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === 'object' && !Array.isArray(value) && !(value instanceof Date);
 }
 
+const PRISMA_QUERY_KEYS = new Set([
+  'include',
+  'select',
+  'omit',
+  'where',
+  'orderBy',
+  'connect',
+  'create',
+  'createMany',
+  'connectOrCreate',
+  'disconnect',
+  'delete',
+  'deleteMany',
+  'update',
+  'updateMany',
+  'upsert',
+  'set',
+]);
+
+function shouldStringifyJsonField(nested: unknown): boolean {
+  if (Array.isArray(nested)) {
+    return true;
+  }
+  if (!isPlainObject(nested)) {
+    return false;
+  }
+  return !Object.keys(nested).some((key) => PRISMA_QUERY_KEYS.has(key));
+}
+
 export function serializeJsonFields(value: unknown): unknown {
   if (Array.isArray(value)) {
     return value.map(serializeJsonFields);
@@ -112,7 +141,13 @@ export function serializeJsonFields(value: unknown): unknown {
   }
   const next: Record<string, unknown> = {};
   for (const [key, nested] of Object.entries(value)) {
-    if (JSON_FIELD_NAMES.has(key) && nested !== undefined && nested !== null && typeof nested !== 'string') {
+    if (
+      JSON_FIELD_NAMES.has(key) &&
+      nested !== undefined &&
+      nested !== null &&
+      typeof nested !== 'string' &&
+      shouldStringifyJsonField(nested)
+    ) {
       next[key] = JSON.stringify(nested);
     } else {
       next[key] = serializeJsonFields(nested);
