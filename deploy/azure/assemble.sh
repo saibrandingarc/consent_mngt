@@ -32,9 +32,14 @@ fi
 copy_real_pkg() {
   local name="$1"
   local dest_parent="$2"
+  local optional="${3:-}"
   local pkg_json
   pkg_json="$(find "${ROOT}/node_modules/.pnpm" -path "*/node_modules/${name}/package.json" | head -1 || true)"
   if [[ -z "${pkg_json}" ]]; then
+    if [[ -n "${optional}" ]]; then
+      echo "skip missing optional ${name}"
+      return 0
+    fi
     echo "missing ${name} in pnpm store" >&2
     exit 1
   fi
@@ -43,6 +48,20 @@ copy_real_pkg() {
   mkdir -p "$(dirname "${dest_parent}/${name}")"
   cp -aL "$(dirname "${pkg_json}")" "${dest_parent}/${name}"
   echo "real copy ${name} -> ${dest_parent}/${name}"
+}
+
+copy_next_runtime() {
+  local dest="$1"
+  copy_real_pkg next "${dest}"
+  copy_real_pkg react "${dest}"
+  copy_real_pkg react-dom "${dest}"
+  local next_pkg="${dest}/next/package.json"
+  local dep
+  while IFS= read -r dep; do
+    [[ -z "${dep}" ]] && continue
+    copy_real_pkg "${dep}" "${dest}"
+  done < <(node -e 'const p=require(process.argv[1]); Object.keys(p.dependencies||{}).forEach((k)=>console.log(k));' "${next_pkg}")
+  copy_real_pkg @next/swc-linux-x64-gnu "${dest}" optional
 }
 
 deref_node_modules() {
@@ -68,11 +87,7 @@ deref_node_modules() {
 
 copy_real_pkg tslib "${OUT}/api/node_modules"
 deref_node_modules "${OUT}/web"
-copy_real_pkg next "${OUT}/web/node_modules"
-copy_real_pkg react "${OUT}/web/node_modules"
-copy_real_pkg react-dom "${OUT}/web/node_modules"
-copy_real_pkg styled-jsx "${OUT}/web/node_modules"
-copy_real_pkg @swc/helpers "${OUT}/web/node_modules"
+copy_next_runtime "${OUT}/web/node_modules"
 
 if [[ ! -d "${ROOT}/azure-admin" ]]; then
   echo "missing azure-admin (pnpm --filter @cmp/admin deploy --prod ./azure-admin)" >&2
@@ -86,15 +101,13 @@ if [[ -d "${ROOT}/apps/admin/public" ]]; then
   cp -a "${ROOT}/apps/admin/public/." "${OUT}/admin/public/"
 fi
 deref_node_modules "${OUT}/admin"
-copy_real_pkg next "${OUT}/admin/node_modules"
-copy_real_pkg react "${OUT}/admin/node_modules"
-copy_real_pkg react-dom "${OUT}/admin/node_modules"
-copy_real_pkg styled-jsx "${OUT}/admin/node_modules"
-copy_real_pkg @swc/helpers "${OUT}/admin/node_modules"
+copy_next_runtime "${OUT}/admin/node_modules"
 
 test -f "${OUT}/web/node_modules/next/dist/bin/next"
+test -f "${OUT}/web/node_modules/@next/env/package.json"
 test -f "${OUT}/web/node_modules/@swc/helpers/package.json"
 test -f "${OUT}/admin/node_modules/next/dist/bin/next"
+test -f "${OUT}/admin/node_modules/@next/env/package.json"
 test -f "${OUT}/admin/node_modules/@swc/helpers/package.json"
 test -f "${OUT}/api/node_modules/tslib/package.json"
 printf '%s\n' 'web/node_modules/next/dist/bin/next' > "${OUT}/next-bin-rel.txt"
