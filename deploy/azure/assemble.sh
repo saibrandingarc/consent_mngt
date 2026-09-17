@@ -50,9 +50,17 @@ deref_node_modules() {
   if [[ ! -d "${dir}/node_modules" ]]; then
     return 0
   fi
+  find "${dir}/node_modules" -xtype l -print -delete || true
   local tmp
   tmp="$(mktemp -d)"
-  rsync -a --copy-links "${dir}/node_modules/" "${tmp}/"
+  set +e
+  rsync -a --copy-links --exclude '.bin/' "${dir}/node_modules/" "${tmp}/"
+  local rc=$?
+  set -e
+  if [[ "${rc}" -ne 0 && "${rc}" -ne 23 && "${rc}" -ne 24 ]]; then
+    echo "rsync failed in ${dir} with ${rc}" >&2
+    exit "${rc}"
+  fi
   rm -rf "${dir}/node_modules"
   mv "${tmp}" "${dir}/node_modules"
   echo "dereferenced node_modules in ${dir}"
