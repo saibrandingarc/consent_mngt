@@ -118,7 +118,7 @@ jobs:
           bash deploy/azure/assemble.sh
 
       - name: Upload artifact for deployment job
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         with:
           name: node-app
           path: azure-site
@@ -128,12 +128,12 @@ jobs:
     needs: [configure, build]
     steps:
       - name: Download artifact from build job
-        uses: actions/download-artifact@v5
+        uses: actions/download-artifact@v7
         with:
           name: node-app
 
       - name: Deploy to Azure Web App
-        uses: azure/webapps-deploy@v3
+        uses: azure/webapps-deploy@v3.0.8
         with:
           app-name: ${{ needs.configure.outputs.app_name }}
           slot-name: Production
