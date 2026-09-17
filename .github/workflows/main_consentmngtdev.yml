@@ -63,12 +63,13 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Set up Node.js version
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: '22.x'
+          package-manager-cache: false
 
       - name: Enable pnpm
         run: corepack enable && corepack prepare pnpm@9.6.0 --activate
@@ -117,7 +118,7 @@ jobs:
           bash deploy/azure/assemble.sh
 
       - name: Upload artifact for deployment job
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: node-app
           path: azure-site
@@ -127,7 +128,7 @@ jobs:
     needs: [configure, build]
     steps:
       - name: Download artifact from build job
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           name: node-app
 
