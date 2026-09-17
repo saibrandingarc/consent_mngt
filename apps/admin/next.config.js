@@ -3,6 +3,7 @@ const path = require('path');
 const { config } = require('dotenv');
 
 config({ path: path.join(__dirname, '../../.env') });
+process.env.APP_BASE_URL = (process.env.ADMIN_URL || 'http://localhost:3001').replace(/\/$/, '');
 
 const nextConfig = {
   output: 'standalone',
@@ -14,6 +15,7 @@ const nextConfig = {
     NEXT_PUBLIC_AUTH0_DOMAIN: process.env.AUTH0_DOMAIN,
     NEXT_PUBLIC_AUTH0_CONFIGURED: process.env.AUTH0_DOMAIN ? 'true' : 'false',
     AUTH0_AUDIENCE: process.env.AUTH0_AUDIENCE,
+    APP_BASE_URL: process.env.APP_BASE_URL,
   },
 };
 

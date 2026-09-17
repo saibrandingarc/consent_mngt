@@ -5,7 +5,7 @@ ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 OUT="${ROOT}/azure-site"
 
 rm -rf "${OUT}"
-mkdir -p "${OUT}/api" "${OUT}/web"
+mkdir -p "${OUT}/api" "${OUT}/web" "${OUT}/admin"
 
 cp "${ROOT}/deploy/azure/host.js" "${OUT}/host.js"
 cp "${ROOT}/deploy/azure/package.json" "${OUT}/package.json"
@@ -50,10 +50,27 @@ copy_real_pkg react "${OUT}/web/node_modules"
 copy_real_pkg react-dom "${OUT}/web/node_modules"
 copy_real_pkg styled-jsx "${OUT}/web/node_modules"
 
+if [[ ! -d "${ROOT}/azure-admin" ]]; then
+  echo "missing azure-admin (pnpm --filter @cmp/admin deploy --prod ./azure-admin)" >&2
+  exit 1
+fi
+cp -a "${ROOT}/azure-admin/." "${OUT}/admin/"
+rm -rf "${OUT}/admin/.next"
+cp -a "${ROOT}/apps/admin/.next" "${OUT}/admin/.next"
+if [[ -d "${ROOT}/apps/admin/public" ]]; then
+  mkdir -p "${OUT}/admin/public"
+  cp -a "${ROOT}/apps/admin/public/." "${OUT}/admin/public/"
+fi
+copy_real_pkg next "${OUT}/admin/node_modules"
+copy_real_pkg react "${OUT}/admin/node_modules"
+copy_real_pkg react-dom "${OUT}/admin/node_modules"
+copy_real_pkg styled-jsx "${OUT}/admin/node_modules"
+
 test -f "${OUT}/web/node_modules/next/dist/bin/next"
+test -f "${OUT}/admin/node_modules/next/dist/bin/next"
 test -f "${OUT}/api/node_modules/tslib/package.json"
 printf '%s\n' 'web/node_modules/next/dist/bin/next' > "${OUT}/next-bin-rel.txt"
-echo "next bin: web/node_modules/next/dist/bin/next"
+printf '%s\n' 'admin/node_modules/next/dist/bin/next' > "${OUT}/admin-next-bin-rel.txt"
 
 mkdir -p "${OUT}/dist"
 printf '%s\n' "require('../host.js');" > "${OUT}/dist/main.js"

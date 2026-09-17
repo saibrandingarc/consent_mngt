@@ -43,8 +43,16 @@ pnpm dev:web     # http://localhost:3000
 | Environment | How you run it | URL |
 |-------------|----------------|-----|
 | **local** | `pnpm dev` with `.env` | web `http://localhost:3000`, admin `http://localhost:3001`, API `http://localhost:4000` |
-| **dev** | `git push origin dev` | [Azure Dev](https://consentmngtdev-gtfgamd4c9b4bbcr.eastus2-01.azurewebsites.net/) |
-| **main** | merge / `git push origin main` | Azure production App Service `consentmngt` |
+| **dev** | `git push origin dev` | One App Service: **web** on the site hostname, **API** at `/api/v1` (and `api.` host if bound), **admin** on `admin.` host |
+| **main** | merge / `git push origin main` | Same layout on the production App Service |
+
+Azure uses **one** Web App. Bind extra hostnames on that same app (not new App Services):
+
+- apex / `www` → web  
+- `api.` → API  
+- `admin.` → admin  
+
+Set `WEB_URL`, `ADMIN_URL`, `API_HOST`, `ADMIN_HOST` in App settings. Until those DNS names exist, open the Azure hostname for web and `…/api/v1/health` for the API.
 
 Do not push day-to-day work to `main`. Use `dev` for Azure Dev. Production App Service settings: `deploy/azure/env.prod.example`. Dev App Service settings: `deploy/azure/env.dev.example`.
 
@@ -52,7 +60,7 @@ GitHub: add secret `AZUREAPPSERVICE_PUBLISHPROFILE_PROD` and optional variables 
 
 ## Deployment
 
-Azure App Service (web + API on one hostname): GitHub Actions on `dev` / `main`.
+Azure App Service: one resource, three hostnames (web / `api.` / `admin.`). GitHub Actions on `dev` / `main`.
 
 Google Cloud (optional): [`deploy/README.md`](./deploy/README.md). Auth0: [`docs/AUTH0-SETUP.md`](./docs/AUTH0-SETUP.md).
 

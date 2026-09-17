@@ -80,7 +80,8 @@ jobs:
           NEXT_PUBLIC_API_URL: ${{ needs.configure.outputs.site_url }}/api/v1
           APP_BASE_URL: ${{ needs.configure.outputs.site_url }}
           WEB_URL: ${{ needs.configure.outputs.site_url }}
-          ADMIN_URL: http://localhost:3001
+          ADMIN_URL: ${{ needs.configure.outputs.site_url }}
+          API_PUBLIC_URL: ${{ needs.configure.outputs.site_url }}/api/v1
           AUTH0_SECRET: build-time-placeholder-secret-32chars
           AUTH0_DOMAIN: example.auth0.com
           AUTH0_CLIENT_ID: build-placeholder-client-id
@@ -97,8 +98,10 @@ jobs:
           pnpm --filter @cmp/database build
           pnpm --filter @cmp/api... build
           pnpm --filter @cmp/web... build
+          pnpm --filter @cmp/admin... build
           pnpm --filter @cmp/api deploy --prod ./azure-api
           pnpm --filter @cmp/web deploy --prod ./azure-web
+          pnpm --filter @cmp/admin deploy --prod ./azure-admin
           SCHEMA="$(find ./azure-api/node_modules -path '*/@cmp/database/prisma/schema.prisma' -print -quit)"
           test -n "$SCHEMA"
           SRC_CLIENT="$(find node_modules/.pnpm -type d -path '*@prisma+client@*/node_modules/.prisma/client' | head -1)"

@@ -5,22 +5,8 @@ import { getAuth0 } from './lib/auth0';
 
 const PUBLIC = ['/auth'];
 
-const USER_PORTAL_PATHS = ['/dashboard', '/settings', '/onboarding', '/verify-email'];
-
 function isPublicPath(pathname: string) {
   return PUBLIC.some((p) => pathname === p || pathname.startsWith(`${p}/`));
-}
-
-function isUserPortalPath(pathname: string) {
-  return USER_PORTAL_PATHS.some((p) => pathname === p || pathname.startsWith(`${p}/`));
-}
-
-function getWebBaseUrl() {
-  return (
-    process.env.WEB_URL?.replace(/\/$/, '') ||
-    process.env.NEXT_PUBLIC_WEB_URL?.replace(/\/$/, '') ||
-    'http://localhost:3000'
-  );
 }
 
 function authNotConfiguredResponse() {
@@ -42,11 +28,6 @@ function authNotConfiguredResponse() {
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  if (isUserPortalPath(pathname)) {
-    const target = new URL(`${pathname}${request.nextUrl.search}`, getWebBaseUrl());
-    return NextResponse.redirect(target);
-  }
-
   if (!isAuth0Configured()) {
     return NextResponse.next();
   }
@@ -62,18 +43,17 @@ export async function middleware(request: NextRequest) {
   }
 
   try {
-    const authResponse = await getAuth0().middleware(request);
-
     if (isPublicPath(pathname)) {
+      const authResponse = await getAuth0().middleware(request);
       authResponse.headers.set('x-middleware-pathname', pathname);
       return authResponse;
     }
 
+    const authResponse = await getAuth0().middleware(request);
     const session = await getAuth0().getSession(request);
     if (!session?.user) {
       const login = new URL('/auth/login', request.url);
-      const path = request.nextUrl.pathname + request.nextUrl.search;
-      login.searchParams.set('returnTo', path);
+      login.searchParams.set('returnTo', pathname + request.nextUrl.search);
       return NextResponse.redirect(login);
     }
 
