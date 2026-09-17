@@ -38,7 +38,6 @@ export function WebsiteChrome({
   const base = `/websites/${domainId}`;
   const [domains, setDomains] = useState<DomainOption[]>([]);
   const [user, setUser] = useState<CurrentUser | null>(null);
-  const [consentCount, setConsentCount] = useState(0);
 
   useEffect(() => {
     apiFetch<DomainOption[]>('/domains', { silent: true }).then((r) => {
@@ -46,14 +45,6 @@ export function WebsiteChrome({
     });
     apiFetch<CurrentUser>('/auth/me', { silent: true }).then((r) => {
       if (r.data) setUser(r.data);
-    });
-    const from = new Date();
-    from.setDate(from.getDate() - 30);
-    apiFetch<{ totalInteractions: number }>(
-      `/insights/analytics/consent?domainId=${encodeURIComponent(domainId)}&from=${encodeURIComponent(from.toISOString())}`,
-      { silent: true },
-    ).then((r) => {
-      if (r.data) setConsentCount(r.data.totalInteractions ?? 0);
     });
   }, [domainId]);
 
@@ -66,10 +57,6 @@ export function WebsiteChrome({
     }
     return pathname === href || pathname.startsWith(`${href}/`);
   }
-
-  const pageviewsUsed = consentCount;
-  const pageviewsLimit = 300_000;
-  const pageviewsPct = Math.min(100, Math.round((pageviewsUsed / pageviewsLimit) * 100));
 
   const selectedValue = useMemo(() => domainId, [domainId]);
 
@@ -106,14 +93,6 @@ export function WebsiteChrome({
           <Link href="/dashboard" className="cy-top-link cy-top-link-accent">
             All websites
           </Link>
-          <a
-            className="cy-top-link"
-            href="https://varnarc.com"
-            target="_blank"
-            rel="noreferrer"
-          >
-            Get Support
-          </a>
           {user ? <ProfileMenu user={user} /> : null}
         </div>
       </header>
@@ -135,20 +114,6 @@ export function WebsiteChrome({
             );
           })}
         </nav>
-        <div className="cy-subnav-meta">
-          <span>
-            Current plan: <strong>Pro</strong>
-          </span>
-          <span className="cy-pageviews">
-            Pageviews used:{' '}
-            <strong>
-              {pageviewsUsed.toLocaleString()}/{pageviewsLimit.toLocaleString()} ({pageviewsPct}%)
-            </strong>
-          </span>
-          <Link href="/settings/organization" className="cy-upgrade-btn">
-            Upgrade
-          </Link>
-        </div>
       </div>
 
       <main className="cy-main">{children}</main>
