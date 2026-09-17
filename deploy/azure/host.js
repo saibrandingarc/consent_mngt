@@ -102,7 +102,7 @@ server.listen(PUBLIC_PORT, '0.0.0.0', () => {
   start('web', process.execPath, [webServer], webCwd, {
     PORT: String(WEB_PORT),
     HOSTNAME: '0.0.0.0',
-    NODE_PATH: path.join(webCwd, 'node_modules'),
+    NODE_PATH: [path.join(webCwd, 'node_modules'), path.join(path.dirname(webServer), 'node_modules')].join(path.delimiter),
     INTERNAL_API_URL: `http://127.0.0.1:${API_PORT}/api/v1`,
     NEXT_PUBLIC_API_URL: `${publicOrigin}/api/v1`,
     APP_BASE_URL: process.env.APP_BASE_URL || publicOrigin,
@@ -110,6 +110,7 @@ server.listen(PUBLIC_PORT, '0.0.0.0', () => {
   });
   start('api', process.execPath, ['dist/main.js'], path.join(ROOT, 'api'), {
     PORT: String(API_PORT),
+    NODE_PATH: path.join(ROOT, 'api', 'node_modules'),
     WEB_URL: process.env.WEB_URL || publicOrigin,
     ADMIN_URL: process.env.ADMIN_URL || 'http://localhost:3001',
   });

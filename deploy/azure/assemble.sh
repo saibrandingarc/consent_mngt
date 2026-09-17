@@ -37,6 +37,28 @@ if [[ -d "${ROOT}/apps/web/public" ]]; then
   cp -a "${ROOT}/apps/web/public/." "${WEB_APP_DIR}/public/"
 fi
 
+copy_pkg() {
+  local name="$1"
+  local dest="$2"
+  mkdir -p "${dest}"
+  local src
+  src="$(find "${ROOT}/node_modules/.pnpm" -path "*/node_modules/${name}/package.json" | head -1 || true)"
+  if [[ -n "${src}" ]]; then
+    rm -rf "${dest}/${name}"
+    cp -a "$(dirname "${src}")" "${dest}/${name}"
+    echo "copied ${name} -> ${dest}/${name}"
+  fi
+}
+
+copy_pkg tslib "${OUT}/api/node_modules"
+copy_pkg styled-jsx "${OUT}/web/node_modules"
+if [[ -d "${OUT}/web/node_modules" ]]; then
+  rm -rf "${WEB_APP_DIR}/node_modules"
+  REL="$(python3 -c "import os; print(os.path.relpath('${OUT}/web/node_modules', '${WEB_APP_DIR}'))")"
+  ln -sfn "${REL}" "${WEB_APP_DIR}/node_modules"
+  echo "linked ${WEB_APP_DIR}/node_modules -> ${REL}"
+fi
+
 mkdir -p "${OUT}/dist"
 printf '%s\n' "require('../host.js');" > "${OUT}/dist/main.js"
 cat > "${OUT}/.deployment" <<'EOF'
