@@ -2,33 +2,16 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
-OUT="${ROOT}/azure-site"
 
-rm -rf "${OUT}"
-mkdir -p "${OUT}/api" "${OUT}/web" "${OUT}/admin"
+write_deploy_meta() {
+  local dir="$1"
+  cat > "${dir}/.deployment" <<'EOF'
+[config]
+SCM_DO_BUILD_DURING_DEPLOYMENT=false
+EOF
+  rm -f "${dir}/oryx-manifest.toml" "${dir}/node_modules.tar.gz"
+}
 
-cp "${ROOT}/deploy/azure/host.js" "${OUT}/host.js"
-cp "${ROOT}/deploy/azure/package.json" "${OUT}/package.json"
-
-if [[ ! -d "${ROOT}/azure-api" ]]; then
-  echo "missing azure-api" >&2
-  exit 1
-fi
-cp -a "${ROOT}/azure-api/." "${OUT}/api/"
-
-if [[ ! -d "${ROOT}/azure-web" ]]; then
-  echo "missing azure-web (pnpm --filter @cmp/web deploy --prod ./azure-web)" >&2
-  exit 1
-fi
-cp -a "${ROOT}/azure-web/." "${OUT}/web/"
-rm -rf "${OUT}/web/.next"
-cp -a "${ROOT}/apps/web/.next" "${OUT}/web/.next"
-if [[ -d "${ROOT}/apps/web/public" ]]; then
-  mkdir -p "${OUT}/web/public"
-  cp -a "${ROOT}/apps/web/public/." "${OUT}/web/public/"
-fi
-
-# pnpm deploy uses symlinks; Azure zip drops them. Materialize real trees.
 copy_real_pkg() {
   local name="$1"
   local dest_parent="$2"
@@ -85,38 +68,67 @@ deref_node_modules() {
   echo "dereferenced node_modules in ${dir}"
 }
 
-copy_real_pkg tslib "${OUT}/api/node_modules"
-deref_node_modules "${OUT}/web"
-copy_next_runtime "${OUT}/web/node_modules"
-
-if [[ ! -d "${ROOT}/azure-admin" ]]; then
-  echo "missing azure-admin (pnpm --filter @cmp/admin deploy --prod ./azure-admin)" >&2
-  exit 1
-fi
-cp -a "${ROOT}/azure-admin/." "${OUT}/admin/"
-rm -rf "${OUT}/admin/.next"
-cp -a "${ROOT}/apps/admin/.next" "${OUT}/admin/.next"
-if [[ -d "${ROOT}/apps/admin/public" ]]; then
-  mkdir -p "${OUT}/admin/public"
-  cp -a "${ROOT}/apps/admin/public/." "${OUT}/admin/public/"
-fi
-deref_node_modules "${OUT}/admin"
-copy_next_runtime "${OUT}/admin/node_modules"
-
-test -f "${OUT}/web/node_modules/next/dist/bin/next"
-test -f "${OUT}/web/node_modules/@next/env/package.json"
-test -f "${OUT}/web/node_modules/@swc/helpers/package.json"
-test -f "${OUT}/admin/node_modules/next/dist/bin/next"
-test -f "${OUT}/admin/node_modules/@next/env/package.json"
-test -f "${OUT}/admin/node_modules/@swc/helpers/package.json"
-test -f "${OUT}/api/node_modules/tslib/package.json"
-printf '%s\n' 'web/node_modules/next/dist/bin/next' > "${OUT}/next-bin-rel.txt"
-printf '%s\n' 'admin/node_modules/next/dist/bin/next' > "${OUT}/admin-next-bin-rel.txt"
-
-mkdir -p "${OUT}/dist"
-printf '%s\n' "require('../host.js');" > "${OUT}/dist/main.js"
-cat > "${OUT}/.deployment" <<'EOF'
-[config]
-SCM_DO_BUILD_DURING_DEPLOYMENT=false
+assemble_api() {
+  local out="${ROOT}/azure-site-api"
+  rm -rf "${out}"
+  mkdir -p "${out}"
+  if [[ ! -d "${ROOT}/azure-api" ]]; then
+    echo "missing azure-api" >&2
+    exit 1
+  fi
+  cp -a "${ROOT}/azure-api/." "${out}/"
+  copy_real_pkg tslib "${out}/node_modules"
+  cat > "${out}/package.json" <<'EOF'
+{
+  "name": "cmp-api",
+  "private": true,
+  "author": "saibrandingarc",
+  "scripts": { "start": "node dist/main.js" },
+  "engines": { "node": "22.x" }
+}
 EOF
-rm -f "${OUT}/oryx-manifest.toml" "${OUT}/node_modules.tar.gz" "${OUT}/api/oryx-manifest.toml"
+  write_deploy_meta "${out}"
+  test -f "${out}/dist/main.js"
+  test -f "${out}/node_modules/tslib/package.json"
+}
+
+assemble_next_app() {
+  local name="$1"
+  local src_deploy="$2"
+  local src_app="$3"
+  local out="${ROOT}/azure-site-${name}"
+  rm -rf "${out}"
+  mkdir -p "${out}"
+  if [[ ! -d "${src_deploy}" ]]; then
+    echo "missing ${src_deploy}" >&2
+    exit 1
+  fi
+  cp -a "${src_deploy}/." "${out}/"
+  rm -rf "${out}/.next"
+  cp -a "${src_app}/.next" "${out}/.next"
+  if [[ -d "${src_app}/public" ]]; then
+    mkdir -p "${out}/public"
+    cp -a "${src_app}/public/." "${out}/public/"
+  fi
+  deref_node_modules "${out}"
+  copy_next_runtime "${out}/node_modules"
+  cp "${ROOT}/deploy/azure/start-next.js" "${out}/start-next.js"
+  cat > "${out}/package.json" <<EOF
+{
+  "name": "cmp-${name}",
+  "private": true,
+  "author": "saibrandingarc",
+  "scripts": { "start": "node start-next.js" },
+  "engines": { "node": "22.x" }
+}
+EOF
+  write_deploy_meta "${out}"
+  test -f "${out}/node_modules/next/dist/bin/next"
+  test -f "${out}/node_modules/@next/env/package.json"
+  test -f "${out}/node_modules/@swc/helpers/package.json"
+}
+
+assemble_api
+assemble_next_app web "${ROOT}/azure-web" "${ROOT}/apps/web"
+assemble_next_app admin "${ROOT}/azure-admin" "${ROOT}/apps/admin"
+echo "assembled azure-site-api azure-site-web azure-site-admin"

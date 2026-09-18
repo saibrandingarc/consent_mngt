@@ -40,27 +40,35 @@ pnpm dev:web     # http://localhost:3000
 
 ## Environments
 
-| Environment | How you run it | URL |
-|-------------|----------------|-----|
-| **local** | `pnpm dev` with `.env` | web `http://localhost:3000`, admin `http://localhost:3001`, API `http://localhost:4000` |
-| **dev** | `git push origin dev` | One App Service: **web** on the site hostname, **API** at `/api/v1` (and `api.` host if bound), **admin** on `admin.` host |
-| **main** | merge / `git push origin main` | Same layout on the production App Service |
+| Environment | How you run it | URLs |
+|-------------|----------------|------|
+| **local** | `pnpm dev` with `.env` | web `:3000`, admin `:3001`, API `:4000` |
+| **dev** | `git push origin dev` | **three** App Services: web, API, admin |
+| **main** | `git push origin main` | three production App Services |
 
-Azure uses **one** Web App. Bind extra hostnames on that same app (not new App Services):
+Local stays one repo. Azure is three Node 22 Linux Web Apps (not one host proxy):
 
-- apex / `www` → web  
-- `api.` → API  
-- `admin.` → admin  
+| App | Default name (dev) | Start |
+|-----|--------------------|-------|
+| Public site | `consentmngtdev` | `node start-next.js` |
+| API | `consentmngtdev-api` | `node dist/main.js` |
+| Admin | `consentmngtdev-admin` | `node start-next.js` |
 
-Set `WEB_URL`, `ADMIN_URL`, `API_HOST`, `ADMIN_HOST` in App settings. Until those DNS names exist, open the Azure hostname for web and `…/api/v1/health` for the API.
+Create the API and admin App Services in the same resource group. Download each publish profile into GitHub secrets:
 
-Do not push day-to-day work to `main`. Use `dev` for Azure Dev. Production App Service settings: `deploy/azure/env.prod.example`. Dev App Service settings: `deploy/azure/env.dev.example`.
+- `AZUREAPPSERVICE_PUBLISHPROFILE_WEB_DEV` (or the existing `AZUREAPPSERVICE_PUBLISHPROFILE_27B5213FF5AB4DDBB652DE4F7F0C857A`)
+- `AZUREAPPSERVICE_PUBLISHPROFILE_API_DEV`
+- `AZUREAPPSERVICE_PUBLISHPROFILE_ADMIN_DEV`
 
-GitHub: add secret `AZUREAPPSERVICE_PUBLISHPROFILE_PROD` and optional variables `AZURE_PROD_APP_NAME`, `AZURE_PROD_URL` when the production App Service exists.
+Optional repo variables: `AZURE_DEV_WEB_URL`, `AZURE_DEV_API_URL`, `AZURE_DEV_ADMIN_URL`, `AZURE_DEV_WEB_APP`, `AZURE_DEV_API_APP`, `AZURE_DEV_ADMIN_APP`.
+
+Set Auth0 callback URLs on **each** Next app origin (`/auth/callback`). Point web/admin `NEXT_PUBLIC_API_URL` at the API host `/api/v1`. On the API app set `WEB_URL` and `ADMIN_URL` for CORS.
+
+App settings templates: `deploy/azure/env.dev.example` and `deploy/azure/env.prod.example`. Do not push day-to-day work to `main`.
 
 ## Deployment
 
-Azure App Service: one resource, three hostnames (web / `api.` / `admin.`). GitHub Actions on `dev` / `main`.
+Azure App Service: **three** Web Apps (web / api / admin). GitHub Actions on `dev` / `main`.
 
 Google Cloud (optional): [`deploy/README.md`](./deploy/README.md). Auth0: [`docs/AUTH0-SETUP.md`](./docs/AUTH0-SETUP.md).
 
